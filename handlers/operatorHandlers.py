@@ -2,11 +2,13 @@ from flask import request
 from flask_restful import Resource
 from Database.models import *
 import logging
+from Errors import error
+import random
 
 
 
 class Register(Resource):
-    @staticmethod
+    # @staticmethod
     def post():
         try:
             user = Operator(
@@ -22,16 +24,16 @@ class Register(Resource):
             return error.INVALID_INPUT_422
         if user.mobile is None:
                 return error.INVALID_INPUT_422
-        user_q = User.query.filter_by(mobile=user.mobile).first()
+        user_q = Operator.query.filter_by(mobile=user.mobile).first()
         if user_q is not None:
             return error.ALREADY_EXIST
         otp = random.randrange(0, 9999,4)
         send_otp(str(otp),user.mobile)
-        unr_user = UnregisterdUser.query.filter_by(mobile=user.mobile).first()
+        unr_user = UnregisterUser.query.filter_by(mobile=user.mobile).first()
         if unr_user is not None:
             unr_user.otp = otp
         else:
-            unr_user = UnregisterdUser(mobile=user.mobile, first_name=user.first_name, last_name=user.last_name,otp=otp)
+            unr_user = UnregisterUser(mobile=user.mobile, first_name=user.first_name, last_name=user.last_name,otp=otp)
             db.session.add(unr_user)
         if request.form["dob"] != "":
             dob = request.form["dob"]

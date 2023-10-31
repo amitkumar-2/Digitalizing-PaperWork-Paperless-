@@ -1,15 +1,16 @@
-from init_and_conf import db
+from Database.init_and_conf import db
 from datetime import datetime
 
 class app_id_with_user_type(db.Model):
-    app_id=db.Column(db.String(50), unique=True, nullable=False)
+    app_id=db.Column(db.String(50), unique=True, nullable=False, primary_key=True)
     user_type=db.Column(db.String(20), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow())
     
 
 class floor_incharge(db.Model):
-    user_name=db.Column(db.String(30), unique=True, nullabel=False)
-    location=db.Column(db.String(30), unique=True, nullabel=False)
+    id=db.Column(db.Integer, primary_key=True)
+    user_name=db.Column(db.String(30), unique=True)
+    location=db.Column(db.String(30), unique=True)
     floor_no=db.Column(db.Integer, nullable=False)
     password=db.Column(db.String(50), nullable=False)
 
