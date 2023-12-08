@@ -1,5 +1,5 @@
 from flask_restful import Api
-from handlers.operatorHandlers import Register
+from handlers.operatorHandlers import Home, Register, Reference
 
 def generate_routes(app):
     
@@ -7,4 +7,10 @@ def generate_routes(app):
     api = Api(app)
     #add all routes resources.
     #default page
+    api.add_resource(Home, "/")
+    
+    # Register Page
     api.add_resource(Register, "/register")
+    
+    # Reference Page
+    api.add_resource(Reference, "/reference")
