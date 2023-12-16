@@ -37,3 +37,4 @@ class Operator(db.Model):
     first_name = db.Column(db.String(length=40))
     last_name = db.Column(db.String(length=40))
     dob = db.Column(db.Date)
+    app_id = db.Column(db.String(length=20))

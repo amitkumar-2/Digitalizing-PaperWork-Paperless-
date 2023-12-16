@@ -12,6 +12,8 @@
 from flask import Blueprint, render_template, request, session, jsonify, make_response
 import handlers
 from functools import wraps
+from Database.models import Operator
+from Database.init_and_conf import db
 
 FloorIncharge1=Blueprint('FloorIncharge', __name__)
 
@@ -112,3 +114,27 @@ def generate_token():
 @FloorIncharge1.route("/floorincharge")
 def FloorIncharge():
     return "<h1>This is home page</h1>"
+
+
+@FloorIncharge1.route("/operator/signup", methods=["POST"])
+def operator_signup():
+    try:
+        username = request.form['username']
+        password = request.form['password']
+        mobile = request.form['mobile']
+        email = request.form['email']
+        first_name = request.form['first_name']
+        last_name = request.form['last_name']
+        dob = request.form['dob']
+    except:
+        return jsonify({"Error": "Username and Password Not Defined"})
+    
+    try:
+        user = Operator.query.filter_by(email=email).first()
+        if user is None:
+            add_user = Operator(username=username, password=password, mobile = mobile, email = email, first_name = first_name, last_name = last_name, dob = dob)
+            db.session.add(add_user)
+            db.session.commit()
+            return jsonify({'Response:': "Operator User added successfully!"})
+    except:
+        return jsonify({"Error in adding data":"Some error occurred while adding the data to the database"})
