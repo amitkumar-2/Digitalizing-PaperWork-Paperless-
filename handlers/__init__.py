@@ -3,6 +3,7 @@ import jwt
 from datetime import datetime, timedelta
 # from .FloorIncharge import FloorIncharge1
 from .FloorIncharge.FloorIncharge import FloorIncharge1
+from .Operator.Operator import Operator1
 from pytz import timezone
 
 
@@ -16,6 +17,7 @@ def create_app():
     app.config["SECRET_KEY"] = "nie83jdie98239A9J3H4hdncHSJD8473"
     
     app.register_blueprint(FloorIncharge1)
+    app.register_blueprint(Operator1)
     return app
 
 # def create_tocken(username):
@@ -111,7 +113,7 @@ def create_tocken(username, user_id):
     payload = {
         'user_id': user_id,
         'username': username,
-        'exp': datetime.utcnow() + timedelta(seconds=110),
+        'exp': datetime.utcnow() + timedelta(hours=5),
     }
     app = create_app()
     # Encode the JWT token
@@ -138,5 +140,6 @@ def is_token_expired(token):
     if decoded_token:
         expiration_time = datetime.utcfromtimestamp(decoded_token['exp'])
         current_utc_time = datetime.utcnow()
+        print(expiration_time, current_utc_time)
         return expiration_time <= current_utc_time
     return True

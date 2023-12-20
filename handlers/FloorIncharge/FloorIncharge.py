@@ -11,8 +11,9 @@
 
 from flask import Blueprint, render_template, request, session, jsonify, make_response
 import handlers
+from datetime import datetime, timedelta
 from functools import wraps
-from Database.models import Operator
+from Database.models import Operator_creds, floor_incharge, sites_information, assigned_task_by_admin
 from Database.init_and_conf import db
 
 FloorIncharge1=Blueprint('FloorIncharge', __name__)
@@ -44,7 +45,7 @@ def token_required(func):
 
 @FloorIncharge1.route('/public')
 def public():
-    return 'For Public'
+    return 'For Public FloorIncharge'
 
 @FloorIncharge1.route('/auth')
 @token_required
@@ -72,14 +73,46 @@ def home():
     else:
         return jsonify({'response': 'Logged In'})
 
+
+@FloorIncharge1.route("/floorincharge/signup", methods=['POST'])
+def signup():
+    try:
+        username = request.form['username']
+        password = request.form['password']
+        location = request.form['location']
+        building_no = request.form['building_no']
+        floor_no = request.form['floor_no']
+        
+        user = floor_incharge.query.filter_by(user_name = username, password = password, location = location).first()
+        if user:
+            return jsonify({'Response:': 'Floor_Incharge User Already Exists!'})
+        else:
+            new_user = floor_incharge(user_name=username, location=location, building_no=building_no, floor_no=floor_no, password=password)
+            db.session.add(new_user)
+            db.session.commit()
+            return jsonify({'Response:': 'Floor_Incharge User added Successfully!'})
+    except:
+        return jsonify({"Error": "Username or Password or location or building_no or floor_no Not Defined"})
+
+
 @FloorIncharge1.route("/floorincharge/login", methods=['POST'])
 def login():
     try:
         username = request.form['username']
         password = request.form['password']
+        location = request.form['location']
+        
+        user = floor_incharge.query.filter_by(user_name = username, password = password, location = location).first()
+        if user is not None:
+            session['logged_in'] = True
+            token = handlers.create_tocken(username=username, user_id = location)
+            return jsonify({'Response:': 'Floor_Incharge login successfull!', 'token:': f'{token}'})
+        else:
+            return jsonify({'Response:': 'Authentication Failed!'})
     except:
-        return jsonify({"Error": "Username and Password Not Defined"})
+        return jsonify({"Error": "Username or Password or location Not Defined"})
 
+    
     # Replace the hardcoded password check with a secure authentication mechanism
     if username and password == '123456':
         session['logged_in'] = True
@@ -116,7 +149,7 @@ def FloorIncharge():
     return "<h1>This is home page</h1>"
 
 
-@FloorIncharge1.route("/operator/signup", methods=["POST"])
+@FloorIncharge1.route("/floorincharge/operator/signup", methods=["POST"])
 def operator_signup():
     try:
         username = request.form['username']
@@ -130,11 +163,152 @@ def operator_signup():
         return jsonify({"Error": "Username and Password Not Defined"})
     
     try:
-        user = Operator.query.filter_by(email=email).first()
+        user = Operator_creds.query.filter_by(email=email).first()
         if user is None:
-            add_user = Operator(username=username, password=password, mobile = mobile, email = email, first_name = first_name, last_name = last_name, dob = dob)
+            add_user = Operator_creds(username=username, password=password, mobile = mobile, email = email, first_name = first_name, last_name = last_name, dob = dob)
             db.session.add(add_user)
             db.session.commit()
             return jsonify({'Response:': "Operator User added successfully!"})
     except:
         return jsonify({"Error in adding data":"Some error occurred while adding the data to the database"})
+
+
+# On Line Number Entry Fieled Click
+@FloorIncharge1.route("/floorincharge/assigntask/getline", methods=['GET'])
+@token_required
+def get_line(**kwargs):
+    try:
+        # Extract parameters from the URL
+        site_location = request.args.get('site_location')
+        building_no = request.args.get('building_no')
+        floor_no = request.args.get('floor_no')
+        
+        if site_location and building_no and floor_no:
+            line_data = sites_information.query.filter_by(site_location=site_location, building_no=building_no, floor_no=floor_no).first()
+            if line_data:
+                return jsonify({'line_data:': f'{type(line_data)}'})
+            else:
+                return jsonify({'No Data Found!':'Please add some data.'})
+        else:
+            return jsonify({"Error": 'Site Location, Building No., and Floor No. are required!'})
+    except:
+        return jsonify({"Error in getting data":"Please provide the site_location, building_no, and floor_no in parameters"}), 404
+
+
+# On Part No Entry Fieled Click
+@FloorIncharge1.route("/floorincharge/assigntask/getpart_no", methods=['GET'])
+@token_required
+def get_part_no(**kwargs):
+    try:
+        # Extract parameters from the URL
+        building_no = request.args.get('building_no')
+        floor_no = request.args.get('floor_no')
+        line_no = request.args.get('line_no')
+        # Get the current date and time
+        current_datetime = datetime.utcnow().date()
+        # Calculate one day before
+        one_day_before = current_datetime - timedelta(days=1)
+        part_no = assigned_task_by_admin.query.filter_by(building_no=building_no, floor_no=floor_no, line_no = line_no, date = one_day_before).first()
+        i = 2
+        while part_no == False:
+            one_day_before = current_datetime - timedelta(days=i)
+            part_no = assigned_task_by_admin.query.filter_by(biulding_no=building_no, floor_no=floor_no, line_no = line_no, date = one_day_before).first()
+            i += 1
+            
+        if part_no:
+            return jsonify({'get_part_no:': f'{part_no.part_number}'})
+        else:
+            return jsonify({'No Data Found part no!':'Please add some data.'})
+    except:
+        return jsonify({"Error in getting data":"Some error occurred while fetching the part no data from the database"})
+
+
+# Response station info after submitting the Line Number and Part Number
+@FloorIncharge1.route("/floorincharge/assigntask/station_name", methods=['GET'])
+@token_required
+def part_no_s_process_and_operator_name(**kwargs):
+    try:
+        # Extract parameters from the URL
+        date = request.args.get('date')
+        building_no = request.args.get('building_no')
+        floor_no = request.args.get('floor_no')
+        line_no = request.args.get('line_no')
+        part_no = request.args.get('part_no')
+        
+        try:
+            station_info = assigned_task_by_admin.query.filter_by(building_no=building_no, floor_no=floor_no, line_no = line_no, part_number = part_no, date = date).all()
+        except Exception as e:
+            print('Station_no Query Error:', e)
+        
+        if station_info:
+            total_station_no = []
+            for record in station_info:
+                total_station_no.append(record.station_no)
+            return jsonify({'get_station_info:': f'{total_station_no}'})
+        else:
+            return jsonify({'No Data Found for station info!':'Please add some data.'})
+    except:
+        return jsonify({"Error in getting data":"Some error occurred while fetching the station info data from the database"})
+
+
+# Assign Task to Operator for a part Number
+@FloorIncharge1.route("/floorincharge/assigntask/assigntask", methods=['POST'])
+@token_required
+def change_process_and_operator_name(**kwargs):
+    try:
+        # Extract parameters from the URL
+        date = request.form['date']
+        building_no = request.form['building_no']
+        floor_no = request.form['floor_no']
+        line_no = request.form['line_no']
+        part_no = request.form['part_no']
+        process_name = request.form['process_name']
+        station_no = request.form['station_no']
+        app_id = request.form['app_id']
+        operator_username = request.form['operator_username']
+        
+        assign_task = assigned_task_by_admin.query.filter_by(date=date, station_no = station_no).first()
+        
+        if assign_task:
+            # Update existing record
+            assign_task.operator_username = operator_username
+            assign_task.process_name = process_name
+            db.session.commit()
+            return jsonify({'Updated Successfully:': f'Operator {operator_username} has assigned process {process_name}'})
+        else:
+            try:
+                assign_task = assigned_task_by_admin(building_no=building_no, floor_no=floor_no, line_no = line_no, part_number = part_no, station_no = station_no, app_id = app_id, operator_username = operator_username, process_name = process_name)
+                db.session.add(assign_task)
+                db.session.commit()
+                return jsonify({'Task Assigned Successfully:': f'Operator {operator_username} has assigned process {process_name}'})
+            except Exception as e:
+                print('Error ######:', e)
+        
+    except Exception as e:
+        # An error occurred during the transaction
+        print(f"Error: {str(e)}")
+        db.session.rollback()
+        jsonify({"Error in assigning the task": "Some error occurred while fetching the station info data from the database", 'Error is:': f'{e}'})
+
+
+# # Check Assigned task By App ID
+# @FloorIncharge1.route('/floorincharge/checkAssignedTaskByAppId/getdata',methods=['GET'])
+# @token_required
+# def check_assigned_task_by_app_id(**kwargs):
+#     try:
+#         # Extract parameters from the URL
+#         date = datetime.utcnow().date()
+#         building_no = request.args.get('building_no')
+#         floor_no = request.args.get('floor_no')
+#         line_no = request.args.get('line_no')
+#         station_no = request.args.get('station_no')
+#         app_id = request.args.get('app_id')
+        
+#         assigned_task_to_station = assigned_task_by_admin.query.filter_by(building_no=building_no, floor_no=floor_no, date=date, station_no = station_no,  line_no = line_no, app_id = app_id).first()
+        
+#         if assigned_task_to_station:
+#             return jsonify({'Assigned:': 'Task has Assigned to this station', 'operator_username:': f'{assigned_task_to_station.operator_username}'})
+#         else:
+#             return jsonify({'Not Assigned:': 'Task Has not Assigned To This Satation Yet'})
+#     except Exception as e:
+#         return jsonify({'Error in Try block:': f'{e}'})
