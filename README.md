@@ -1,0 +1,1 @@
+I am facing the main problem is that first create the database seperatly with #docker compose up -d postgres command and then run the flask-app container with seperate command #docker compose up --build flask-app
