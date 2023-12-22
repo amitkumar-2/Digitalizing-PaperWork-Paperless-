@@ -1,0 +1,80 @@
+#version: '3'
+
+#services:
+#  redmine:
+#    image: redmine:latest
+#    environment:
+#      REDMINE_DB_MYSQL: "mysql"
+#      REDMINE_DB_DATABASE: "redmine"
+#      REDMINE_DB_USERNAME: "redmineuser"
+#      REDMINE_DB_PASSWORD: "redminepass"
+#    ports:
+#      - "3000:3000"
+#    depends_on:
+#      - mysql
+
+#  mysql:
+#    image: mysql:5.7
+#    environment:
+#      MYSQL_ROOT_PASSWORD: "rootpass"
+#      MYSQL_DATABASE: "redmine"
+#      MYSQL_USER: "redmineuser"
+#      MYSQL_PASSWORD: "redminepass"
+
+
+
+
+###########################################################################################
+
+
+
+#version: '3'
+
+#services:
+#  postgres:
+#    image: postgres:latest
+#    environment:
+#      - POSTGRES_PASSWORD=postgres
+#      - POSTGRES_USER=postgres
+#      - POSTGRES_DB=postgresi
+#    ports:
+#      - "5432"
+
+        #  flask-app:
+    #    container_name: flask_app
+      #    build:
+      #      context: .
+        #      dockerfile: Dockerfile
+        #    ports:
+      #      - "5000:5000"
+        #    environment:
+      #      - DB_URL=postgresql://postgres:postgres@postgres:5432/postgres
+        #    depends_on:
+#      - postgres
+
+
+
+
+
+##############################################################################################################
+
+
+
+version: '3'
+
+services:
+  flask-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: your_username
+      POSTGRES_PASSWORD: your_password
+      POSTGRES_DB: your_database

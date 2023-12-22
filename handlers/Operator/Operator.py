@@ -54,9 +54,9 @@ def operator_login():
             token = handlers.create_tocken(username=username, user_id = user.user_id)
             return jsonify({'Response:': 'Operator login successfull!', 'token:': f'{token}'})
         else:
-            return jsonify({'Response:': 'Authentication Failed!'})
+            return jsonify({'Response:': 'Authentication Failed!'}), 401
     except:
-        return jsonify({"Error": "Username or Password Defined"})
+        return jsonify({"Error": "Username or Password Defined"}), 402
 
 
 
@@ -81,4 +81,4 @@ def check_assigned_task_by_app_id(**kwargs):
         else:
             return jsonify({'Not Assigned:': 'Task Has not Assigned To This Satation Yet'})
     except Exception as e:
-        return jsonify({'Error in Try block:': f'{e}'})
+        return jsonify({'Error in Try block:': f'{e}'}), 402

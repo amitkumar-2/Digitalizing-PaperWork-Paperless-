@@ -62,7 +62,7 @@ def is_token_expired(token):
     if decoded_token:
         expiration_time = datetime.utcfromtimestamp(decoded_token['exp'])
         current_utc_time = datetime.utcnow()
-        return expiration_time <= current_utc_time
+        return expiration_time <= current_utc_time, decoded_token
     return True
 
 # Example usage
@@ -81,6 +81,9 @@ encoded_token = encode_token(payload)
 print("Encoded Token:", encoded_token)
 
 time.sleep(1)
+
+token_payload = is_token_expired(encoded_token)
+print(type(token_payload[1]))
 
 # Check if the token has expired
 if is_token_expired(encoded_token):

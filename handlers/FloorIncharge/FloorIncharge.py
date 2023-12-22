@@ -90,9 +90,9 @@ def signup():
             new_user = floor_incharge(user_name=username, location=location, building_no=building_no, floor_no=floor_no, password=password)
             db.session.add(new_user)
             db.session.commit()
-            return jsonify({'Response:': 'Floor_Incharge User added Successfully!'})
+            return jsonify({'Response:': 'Floor_Incharge User added Successfully!'}), 401
     except:
-        return jsonify({"Error": "Username or Password or location or building_no or floor_no Not Defined"})
+        return jsonify({"Error": "Username or Password or location or building_no or floor_no Not Defined"}), 404
 
 
 @FloorIncharge1.route("/floorincharge/login", methods=['POST'])
@@ -108,9 +108,9 @@ def login():
             token = handlers.create_tocken(username=username, user_id = location)
             return jsonify({'Response:': 'Floor_Incharge login successfull!', 'token:': f'{token}'})
         else:
-            return jsonify({'Response:': 'Authentication Failed!'})
+            return jsonify({'Response:': 'Authentication Failed!'}), 401
     except:
-        return jsonify({"Error": "Username or Password or location Not Defined"})
+        return jsonify({"Error": "Username or Password or location Not Defined"}), 404
 
     
     # Replace the hardcoded password check with a secure authentication mechanism
@@ -173,6 +173,13 @@ def operator_signup():
         return jsonify({"Error in adding data":"Some error occurred while adding the data to the database"})
 
 
+# Floor-Incharge Dashboard all Data API
+@FloorIncharge1.route("/floorincharge/dashboard")
+@token_required
+def dashboard(**kwargs):
+    """Returns a JSON object containing all the data for floor-incharge dashboard"""
+    
+
 # On Line Number Entry Fieled Click
 @FloorIncharge1.route("/floorincharge/assigntask/getline", methods=['GET'])
 @token_required
@@ -220,7 +227,7 @@ def get_part_no(**kwargs):
         else:
             return jsonify({'No Data Found part no!':'Please add some data.'})
     except:
-        return jsonify({"Error in getting data":"Some error occurred while fetching the part no data from the database"})
+        return jsonify({"Error in getting data":"Some error occurred while fetching the part no data from the database"}), 402
 
 
 # Response station info after submitting the Line Number and Part Number
@@ -248,7 +255,7 @@ def part_no_s_process_and_operator_name(**kwargs):
         else:
             return jsonify({'No Data Found for station info!':'Please add some data.'})
     except:
-        return jsonify({"Error in getting data":"Some error occurred while fetching the station info data from the database"})
+        return jsonify({"Error in getting data":"Some error occurred while fetching the station info data from the database"}), 402
 
 
 # Assign Task to Operator for a part Number
@@ -288,7 +295,7 @@ def change_process_and_operator_name(**kwargs):
         # An error occurred during the transaction
         print(f"Error: {str(e)}")
         db.session.rollback()
-        jsonify({"Error in assigning the task": "Some error occurred while fetching the station info data from the database", 'Error is:': f'{e}'})
+        jsonify({"Error in assigning the task": "Some error occurred while fetching the station info data from the database", 'Error is:': f'{e}'}), 402
 
 
 # # Check Assigned task By App ID

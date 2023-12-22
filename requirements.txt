@@ -1,0 +1,11 @@
+flask
+psycopg2-binary
+wtforms
+flask_sqlalchemy
+datetime
+flask_wtf
+setuptools
+Werkzeug
+flask_migrate
+pyjwt
+pytz
