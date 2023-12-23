@@ -13,7 +13,7 @@ from flask import Blueprint, render_template, request, session, jsonify, make_re
 import handlers
 from datetime import datetime, timedelta
 from functools import wraps
-from Database.models import Operator_creds, floor_incharge, sites_information, assigned_task_by_admin
+from Database.models import all_Operator_creds, all_floor_incharge, all_sites_information, gurugram_assigned_task_by_admin
 from Database.init_and_conf import db
 
 FloorIncharge1=Blueprint('FloorIncharge', __name__)
@@ -83,11 +83,11 @@ def signup():
         building_no = request.form['building_no']
         floor_no = request.form['floor_no']
         
-        user = floor_incharge.query.filter_by(user_name = username, password = password, location = location).first()
+        user = all_floor_incharge.query.filter_by(user_name = username, password = password, location = location).first()
         if user:
             return jsonify({'Response:': 'Floor_Incharge User Already Exists!'})
         else:
-            new_user = floor_incharge(user_name=username, location=location, building_no=building_no, floor_no=floor_no, password=password)
+            new_user = all_floor_incharge(user_name=username, location=location, building_no=building_no, floor_no=floor_no, password=password)
             db.session.add(new_user)
             db.session.commit()
             return jsonify({'Response:': 'Floor_Incharge User added Successfully!'}), 401
@@ -102,7 +102,7 @@ def login():
         password = request.form['password']
         location = request.form['location']
         
-        user = floor_incharge.query.filter_by(user_name = username, password = password, location = location).first()
+        user = all_floor_incharge.query.filter_by(user_name = username, password = password, location = location).first()
         if user is not None:
             session['logged_in'] = True
             token = handlers.create_tocken(username=username, user_id = location)
@@ -163,9 +163,9 @@ def operator_signup():
         return jsonify({"Error": "Username and Password Not Defined"})
     
     try:
-        user = Operator_creds.query.filter_by(email=email).first()
+        user = all_Operator_creds.query.filter_by(email=email).first()
         if user is None:
-            add_user = Operator_creds(username=username, password=password, mobile = mobile, email = email, first_name = first_name, last_name = last_name, dob = dob)
+            add_user = all_Operator_creds(username=username, password=password, mobile = mobile, email = email, first_name = first_name, last_name = last_name, dob = dob)
             db.session.add(add_user)
             db.session.commit()
             return jsonify({'Response:': "Operator User added successfully!"})
@@ -191,7 +191,7 @@ def get_line(**kwargs):
         floor_no = request.args.get('floor_no')
         
         if site_location and building_no and floor_no:
-            line_data = sites_information.query.filter_by(site_location=site_location, building_no=building_no, floor_no=floor_no).first()
+            line_data = all_sites_information.query.filter_by(site_location=site_location, building_no=building_no, floor_no=floor_no).first()
             if line_data:
                 return jsonify({'line_data:': f'{type(line_data)}'})
             else:
@@ -215,11 +215,11 @@ def get_part_no(**kwargs):
         current_datetime = datetime.utcnow().date()
         # Calculate one day before
         one_day_before = current_datetime - timedelta(days=1)
-        part_no = assigned_task_by_admin.query.filter_by(building_no=building_no, floor_no=floor_no, line_no = line_no, date = one_day_before).first()
+        part_no = gurugram_assigned_task_by_admin.query.filter_by(building_no=building_no, floor_no=floor_no, line_no = line_no, date = one_day_before).first()
         i = 2
         while part_no == False:
             one_day_before = current_datetime - timedelta(days=i)
-            part_no = assigned_task_by_admin.query.filter_by(biulding_no=building_no, floor_no=floor_no, line_no = line_no, date = one_day_before).first()
+            part_no = gurugram_assigned_task_by_admin.query.filter_by(biulding_no=building_no, floor_no=floor_no, line_no = line_no, date = one_day_before).first()
             i += 1
             
         if part_no:
@@ -243,7 +243,7 @@ def part_no_s_process_and_operator_name(**kwargs):
         part_no = request.args.get('part_no')
         
         try:
-            station_info = assigned_task_by_admin.query.filter_by(building_no=building_no, floor_no=floor_no, line_no = line_no, part_number = part_no, date = date).all()
+            station_info = gurugram_assigned_task_by_admin.query.filter_by(building_no=building_no, floor_no=floor_no, line_no = line_no, part_number = part_no, date = date).all()
         except Exception as e:
             print('Station_no Query Error:', e)
         
@@ -274,7 +274,7 @@ def change_process_and_operator_name(**kwargs):
         app_id = request.form['app_id']
         operator_username = request.form['operator_username']
         
-        assign_task = assigned_task_by_admin.query.filter_by(date=date, station_no = station_no).first()
+        assign_task = gurugram_assigned_task_by_admin.query.filter_by(date=date, station_no = station_no).first()
         
         if assign_task:
             # Update existing record
@@ -284,7 +284,7 @@ def change_process_and_operator_name(**kwargs):
             return jsonify({'Updated Successfully:': f'Operator {operator_username} has assigned process {process_name}'})
         else:
             try:
-                assign_task = assigned_task_by_admin(building_no=building_no, floor_no=floor_no, line_no = line_no, part_number = part_no, station_no = station_no, app_id = app_id, operator_username = operator_username, process_name = process_name)
+                assign_task = gurugram_assigned_task_by_admin(building_no=building_no, floor_no=floor_no, line_no = line_no, part_number = part_no, station_no = station_no, app_id = app_id, operator_username = operator_username, process_name = process_name)
                 db.session.add(assign_task)
                 db.session.commit()
                 return jsonify({'Task Assigned Successfully:': f'Operator {operator_username} has assigned process {process_name}'})

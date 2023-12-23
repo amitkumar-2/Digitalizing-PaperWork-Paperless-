@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, session, jsonify, make_re
 import handlers
 from datetime import datetime, timedelta
 from functools import wraps
-from Database.models import Operator_creds, floor_incharge, sites_information, assigned_task_by_admin
+from Database.models import all_Operator_creds, all_floor_incharge, all_sites_information, gurugram_assigned_task_by_admin
 from Database.init_and_conf import db
 
 Operator1=Blueprint('Operator', __name__)
@@ -48,7 +48,7 @@ def operator_login():
         username = request.form['username']
         password = request.form['password']
         
-        user = Operator_creds.query.filter_by(username = username, password = password).first()
+        user = all_Operator_creds.query.filter_by(username = username, password = password).first()
         if user is not None:
             session['logged_in'] = True
             token = handlers.create_tocken(username=username, user_id = user.user_id)
@@ -74,7 +74,7 @@ def check_assigned_task_by_app_id(**kwargs):
         station_no = request.args.get('station_no')
         app_id = request.args.get('app_id')
         
-        assigned_task_to_station = assigned_task_by_admin.query.filter_by(building_no=building_no, floor_no=floor_no, date=date, station_no = station_no,  line_no = line_no, app_id = app_id).first()
+        assigned_task_to_station = gurugram_assigned_task_by_admin.query.filter_by(building_no=building_no, floor_no=floor_no, date=date, station_no = station_no,  line_no = line_no, app_id = app_id).first()
         
         if assigned_task_to_station:
             return jsonify({'Assigned:': 'Task has Assigned to this station', 'operator_username:': f'{assigned_task_to_station.operator_username}'})
