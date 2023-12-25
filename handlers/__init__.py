@@ -126,7 +126,7 @@ def decode_and_verify_token(token):
         if isinstance(token, str):
             token = token.encode('utf-8')
         decoded_token = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS512'])
-        print("Decoded Token:", decoded_token)
+        # print("Decoded Token:", decoded_token)
         return decoded_token
     except jwt.ExpiredSignatureError as e:
         print("Token has expired:", e)
@@ -140,6 +140,6 @@ def is_token_expired(token):
     if decoded_token:
         expiration_time = datetime.utcfromtimestamp(decoded_token['exp'])
         current_utc_time = datetime.utcnow()
-        print(expiration_time, current_utc_time)
-        return expiration_time <= current_utc_time
+        # print(expiration_time, current_utc_time)
+        return expiration_time <= current_utc_time, decoded_token
     return True

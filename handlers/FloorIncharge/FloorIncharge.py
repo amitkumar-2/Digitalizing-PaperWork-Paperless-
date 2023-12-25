@@ -13,7 +13,8 @@ from flask import Blueprint, render_template, request, session, jsonify, make_re
 import handlers
 from datetime import datetime, timedelta
 from functools import wraps
-from Database.models import all_Operator_creds, all_floor_incharge, all_sites_information, gurugram_assigned_task_by_admin
+from collections import Counter
+from Database.models import all_Operator_creds, all_floor_incharge, all_sites_information, gurugram_assigned_task_by_admin, all_operators_logged_in_status
 from Database.init_and_conf import db
 
 FloorIncharge1=Blueprint('FloorIncharge', __name__)
@@ -30,10 +31,12 @@ def token_required(func):
             payload = handlers.is_token_expired(token)
             # Add the token payload to the kwargs so that it's available to the protected route
             kwargs['token_payload'] = payload
-            
-            if payload == False:
-                # Call the original function with the token payload
-                return func(*args, **kwargs)
+            if payload[0] == False:
+                try:
+                    # Call the original function with the token payload
+                    return func(*args, **kwargs)
+                except:
+                    return jsonify({"Error:": "An error occurred while trying to excute the function."})
             else:
                 return jsonify({'Alert!': 'Token is expired!'})
         except:
@@ -177,8 +180,35 @@ def operator_signup():
 @FloorIncharge1.route("/floorincharge/dashboard")
 @token_required
 def dashboard(**kwargs):
-    """Returns a JSON object containing all the data for floor-incharge dashboard"""
-    
+    try:
+        """Returns a JSON object containing all the data for floor-incharge dashboard"""
+        username = kwargs["token_payload"][1]['username']
+        date = datetime.now().date()
+        user = all_floor_incharge.query.filter_by(user_name=username).first()
+        if user:
+            location = user.location
+            building_no = user.building_no
+            floor_no = user.floor_no
+            
+            try:
+                get_login_users_status = all_operators_logged_in_status.query.filter_by(date=date, login_status=True).all()
+                print('##########', get_login_users_status)
+                active_stations = len(get_login_users_status)
+                get_line_and_station_no = all_sites_information.query.filter_by(site_location = location, building_no = building_no, floor_no = floor_no).all()
+                list_total_line = []
+                for i in range(len(get_line_and_station_no)):
+                    line = get_line_and_station_no[i].line_no
+                    list_total_line.append(line)
+                    
+                stations_at_one_line = dict(Counter(list_total_line))
+                total_line = set(list_total_line)
+                
+                
+                return jsonify({'username': f'{username}', 'total_line': f'{len(total_line)}', 'total_stations': f'{len(get_line_and_station_no)}', 'total_stations_at_one_line': f'{stations_at_one_line}', 'active_stations': f'{active_stations}'})
+            except:
+                return jsonify({'Error': 'Unable to get line no and station no information'})
+    except:
+        return jsonify({'Error': 'Block is not able to execute successfully'}), 422
 
 # On Line Number Entry Fieled Click
 @FloorIncharge1.route("/floorincharge/assigntask/getline", methods=['GET'])

@@ -13,7 +13,7 @@ class all_floor_incharge(db.Model):
     user_name=db.Column(db.String(30), unique=True)
     location=db.Column(db.String(30), nullable=False)
     building_no = db.Column(db.String(30), nullable = False)
-    floor_no=db.Column(db.Integer, nullable=False)
+    floor_no=db.Column(db.String(length=10), nullable=False)
     password=db.Column(db.String(50), nullable=False)
 
 
@@ -46,10 +46,12 @@ class all_operators_logged_in_status(db.Model):
     log_id = db.Column(db.Integer, primary_key=True)
     operator_username = db.Column(db.String(length=80), nullable=False)
     mobile = db.Column(db.String(length=14),nullable = False)
-    line_no = db.Column(db.String(length=16), nullable=False)
+    # line_no = db.Column(db.String(length=16), nullable=False)
     station_no = db.Column(db.String(length=20), nullable=False)
     login_status = db.Column(db.Boolean, default = False)
-    time = db.Column(db.Date, default=datetime.now(pytz.timezone('Asia/Kolkata')).time())
+    first_login_time = db.Column(db.Date, default=datetime.now(pytz.timezone('Asia/Kolkata')).time())
+    last_login_time = db.Column(db.Date)
+    logout_time = db.Column(db.Date)
     date = db.Column(db.Date, default=datetime.now(pytz.timezone('Asia/Kolkata')).date())
 
 
@@ -99,7 +101,8 @@ class gurugram_line_performance(db.Model):
 
 class gurugram_station_performance(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    station_no = db.Column(db.String(length=20), nullable=True)
+    sift = db.Column(db.String(length=10), nullable=False)
+    station_no = db.Column(db.String(length=20), nullable=False)
     target = db.Column(db.String(length=15))
     passed = db.Column(db.String(length=15))
     failed = db.Column(db.String(length=15))
