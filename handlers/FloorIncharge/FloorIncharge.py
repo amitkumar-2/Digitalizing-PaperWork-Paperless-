@@ -24,7 +24,12 @@ FloorIncharge1=Blueprint('FloorIncharge', __name__)
 def token_required(func):
     @wraps(func)
     def decorated(*args, **kwargs):
-        token = request.args.get('token')
+        auth_header = request.headers.get('Authorization')
+        if auth_header and auth_header.startswith('Bearer '):
+            token = auth_header.split(" ")[1]
+        else:
+            token = None
+        # token = request.args.get('token')
         if not token:
             return jsonify({'Alert!': 'Token is missing!'})
         try:
@@ -93,7 +98,7 @@ def signup():
             new_user = all_floor_incharge(user_name=username, location=location, building_no=building_no, floor_no=floor_no, password=password)
             db.session.add(new_user)
             db.session.commit()
-            return jsonify({'Response:': 'Floor_Incharge User added Successfully!'}), 401
+            return jsonify({'Response:': 'Floor_Incharge User added Successfully!'}), 201
     except:
         return jsonify({"Error": "Username or Password or location or building_no or floor_no Not Defined"}), 404
 
