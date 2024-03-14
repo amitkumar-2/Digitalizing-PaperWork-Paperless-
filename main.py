@@ -36,4 +36,4 @@ init_and_conf.migrate.init_app(app, init_and_conf.db)
 if __name__=="__main__":
     with app.app_context():
         init_and_conf.db.create_all()
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000)

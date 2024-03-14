@@ -109,10 +109,10 @@ from pytz import timezone
 
 
 
-def create_tocken(username, user_id):
+def create_tocken(employee_id, mobile_no):
     payload = {
-        'user_id': user_id,
-        'username': username,
+        'mobile_no': mobile_no,
+        'employee_id': employee_id,
         'exp': datetime.utcnow() + timedelta(hours=5),
     }
     app = create_app()

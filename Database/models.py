@@ -8,13 +8,21 @@ class app_id_with_user_type(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.now(pytz.timezone('Asia/Kolkata')))
     
 
-class all_floor_incharge(db.Model):
-    id=db.Column(db.Integer, primary_key=True)
-    user_name=db.Column(db.String(30), unique=True)
+############################# companies all floor In-Charge Info ########################################
+class floor_incharge_creds(db.Model):
+    # id=db.Column(db.Integer, autoincrement=True)
+    employee_id=db.Column(db.String(30), unique=True, primary_key=True)
     location=db.Column(db.String(30), nullable=False)
     building_no = db.Column(db.String(30), nullable = False)
     floor_no=db.Column(db.String(length=10), nullable=False)
+    fName = db.Column(db.String(length=15), nullable=False)
+    mName = db.Column(db.String(length=15))
+    lName = db.Column(db.String(length=15))
+    dob = db.Column(db.Date)
+    mobile = db.Column(db.String(length=14),unique=True)
+    email = db.Column(db.String(length=80),unique=True)
     password=db.Column(db.String(50), nullable=False)
+    created = db.Column(db.DateTime, default=datetime.now(pytz.timezone('Asia/Kolkata')))
 
 
 class UnregisterUser(db.Model):
@@ -22,24 +30,25 @@ class UnregisterUser(db.Model):
     ServTimeStemp = db.Column(db.DateTime, default=datetime.now())
     mobile = db.Column(db.String(50), nullable=False)
     first_name = db.Column(db.String(length=40),nullable=False)
-    last_name = db.Column(db.String(length=40),nullable=True)
+    last_name = db.Column(db.String(length=40))
     dob = db.Column(db.Date,nullable=True)
     otp = db.Column(db.Integer,nullable=False)
     user_type = db.Column(db.String(20))
 
 
-class all_Operator_creds(db.Model):
-    user_id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(length=80), unique=True)
+############################# companies all operators Info ########################################
+class Operator_creds(db.Model):
+    # id = db.Column(db.Integer, autoincrement=True)
+    employee_id = db.Column(db.String(length=20), unique=True, primary_key=True)
+    created = db.Column(db.DateTime, default=datetime.now(pytz.timezone('Asia/Kolkata')))
+    fName = db.Column(db.String(length=15), nullable=False)
+    mName = db.Column(db.String(length=15))
+    lName = db.Column(db.String(length=15))
+    skill_level = db.Column(db.String(length=10)) # 0 - beginner
+    dob = db.Column(db.Date)
     mobile = db.Column(db.String(length=14),unique=True)
     email = db.Column(db.String(length=80),unique=True)
-    password = db.Column(db.String(length=80))
-    created = db.Column(db.DateTime, default=datetime.now(pytz.timezone('Asia/Kolkata')))
-    last_login = db.Column(db.DateTime, default=None)
-    first_name = db.Column(db.String(length=40))
-    last_name = db.Column(db.String(length=40))
-    dob = db.Column(db.Date)
-    app_id = db.Column(db.String(length=20))
+    password = db.Column(db.String(length=80), nullable=False)
 
 
 class all_operators_logged_in_status(db.Model):
@@ -109,3 +118,131 @@ class gurugram_station_performance(db.Model):
     filled = db.Column(db.String(length=15))
     date_time = db.Column(db.DateTime, default=datetime.now(pytz.timezone('Asia/Kolkata')))
     date = db.Column(db.Date, default=datetime.now(pytz.timezone('Asia/Kolkata')).date())
+
+
+
+################################# companies all stations info ##########################################
+class stations(db.Model):
+    id = db.Column(db.Integer, autoincrement=True)
+    station_id = db.Column(db.String(length=15), unique=True, primary_key=True)
+    line_no = db.Column(db.String(length=10), nullable=False)
+    floor_no = db.Column(db.String(length=10), nullable=False)
+    building_no = db.Column(db.String(length=10), nullable=False)
+    location = db.Column(db.String(length=25), nullable=False)
+    added_by_owner = db.Column(db.String(length=15), nullable=False)
+    added_date = db.Column(db.DateTime, default=datetime.now(pytz.timezone('Asia/Kolkata')))
+
+
+################################# work assigned to operator table ######################################
+class work_assigned_to_operator(db.Model):
+    # id = db.Column(db.Integer, autoincrement=True)
+    employee_id = db.Column(db.String(length=20), nullable=False)
+    station_id = db.Column(db.String(length=15), primary_key=True, nullable=False)
+    part_no = db.Column(db.String(length=20), nullable=False)
+    process_no = db.Column(db.String(length=20), nullable=False)
+    start_shift_time = db.Column(db.Time, nullable=False)
+    end_shift_time = db.Column(db.Time, nullable=False)
+    shift = db.Column(db.String(length=2), nullable=False)
+    assigned_by_owner = db.Column(db.String(30), nullable=False)
+    operator_login_status = db.Column(db.Boolean, default=False)  # True means the operator is logged in
+    total_assigned_task = db.Column(db.Integer, nullable=False)
+    left_for_rework = db.Column(db.Integer)
+    passed = db.Column(db.Integer)
+    filled = db.Column(db.Integer)
+    failed = db.Column(db.Integer)
+    date_time = db.Column(db.DateTime, default=datetime.now(pytz.timezone('Asia/Kolkata')))
+
+class work_assigned_to_operator_logs(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    employee_id = db.Column(db.String(length=20), nullable=False)
+    station_id = db.Column(db.String(length=15), nullable=False)
+    part_no = db.Column(db.String(length=20), nullable=False)
+    process_no = db.Column(db.String(length=20), nullable=False)
+    start_shift_time = db.Column(db.Time, nullable=False)
+    end_shift_time = db.Column(db.Time, nullable=False)
+    shift = db.Column(db.String(length=2), nullable=False)
+    assigned_by_owner = db.Column(db.String(30), nullable=False)
+    total_assigned_task = db.Column(db.Integer, nullable=False)
+    left_for_rework = db.Column(db.Integer)
+    passed = db.Column(db.Integer)
+    filled = db.Column(db.Integer)
+    failed = db.Column(db.Integer)
+    date_time = db.Column(db.DateTime, default=datetime.now(pytz.timezone('Asia/Kolkata')))
+
+
+##################################### all parts information table #########################################
+class parts_info(db.Model):
+    # id = db.Column(db.Integer, autoincrement=True)
+    parn_name = db.Column(db.String(length=64), nullable=False)
+    part_no = db.Column(db.String(length=20), primary_key=True)
+    added_by_owner = db.Column(db.String(30), nullable=False)
+    date_time = db.Column(db.DateTime, default=datetime.now(pytz.timezone('Asia/Kolkata')))
+
+
+###################################### all process name information table ##################################
+class  processes_info(db.Model):
+    # id = db.Column(db.Integer, autoincrement=True)
+    process_name = db.Column(db.String(length=220), nullable=False)
+    process_no = db.Column(db.String(length=40), primary_key=True)
+    belongs_to_part = db.Column(db.String(length=20), nullable=False)
+    added_by_owner = db.Column(db.String(30), nullable=False)
+    date_time = db.Column(db.DateTime, default=datetime.now(pytz.timezone('Asia/Kolkata')))
+
+
+##################################### all parameters information table #####################################
+class parameters_info(db.Model):
+    # id = db.Column(db.Integer, autoincrement=True)
+    parameter_name = db.Column(db.String(length=220), nullable=False)
+    parameter_no = db.Column(db.String(length=60), primary_key=True)
+    process_no = db.Column(db.String(length=40), nullable=False)
+    belongs_to_part = db.Column(db.String(length=20), nullable=False)
+    added_by_owner = db.Column(db.String(30), nullable=False)
+    date_time = db.Column(db.DateTime, default=datetime.now(pytz.timezone('Asia/Kolkata')))
+
+
+#################################### all stations information logs ##########################################
+class station_info_logs(db.Model):
+    id = db.Column(db.Integer, autoincrement=True, primary_key=True)
+    station_id = db.Column(db.String(length=15), nullable=False)
+    total_assigned_task = db.Column(db.Integer, nullable=False)
+    left_for_rework = db.Column(db.Integer)
+    passed = db.Column(db.Integer)
+    filled = db.Column(db.Integer)
+    failed = db.Column(db.Integer)
+    start_shift_timing = db.Column(db.Time, nullable=False)
+    end_shift_timing = db.Column(db.Time, nullable=False)
+    date = db.Column(db.Date, default=datetime.now(pytz.timezone('Asia/Kolkata')).date())
+
+class station_info(db.Model):
+    # id = db.Column(db.Integer, autoincrement=True)
+    station_id = db.Column(db.String(length=15), primary_key=True)
+    total_assigned_task = db.Column(db.Integer, nullable=False)
+    left_for_rework = db.Column(db.Integer)
+    passed = db.Column(db.Integer)
+    filled = db.Column(db.Integer)
+    failed = db.Column(db.Integer)
+    start_shift_timing = db.Column(db.Time, nullable=False)
+    end_shift_timing = db.Column(db.Time, nullable=False)
+    date = db.Column(db.Date, default=datetime.now(pytz.timezone('Asia/Kolkata')).date())
+
+
+########################################################### Startup check sheet data ######################################################
+class check_sheet_data(db.Model):
+    csp_id = db.Column(db.String(length=15), primary_key=True)
+    csp_name = db.Column(db.String(length=300), nullable=False)
+    added_by_owner = db.Column(db.String(length=30), nullable=False)
+    date_time = db.Column(db.DateTime, default=datetime.now(pytz.timezone('Asia/Kolkata')))
+
+class check_sheet_data_logs(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    csp_id = db.Column(db.String(length=15), nullable=False) # Check Sheet Parameter Id
+    oprtr_employee_id = db.Column(db.String(length=20), nullable=False)  # Operator Employee ID
+    flrInchr_employee_id = db.Column(db.String(length=30))
+    status_datas = db.Column(db.String(length=1500), nullable=False)
+    date_time = db.Column(db.DateTime, default=datetime.now(pytz.timezone('Asia/Kolkata')))
+
+
+######################################################################################################################################
+######################################### poka yoke verification ka logic lagana hai #################################################
+######################################################################################################################################
+################# create poka yoke verification and FPA column and for process settings parameters ###################################

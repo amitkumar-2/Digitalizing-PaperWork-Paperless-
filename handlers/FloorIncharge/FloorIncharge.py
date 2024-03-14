@@ -14,7 +14,7 @@ import handlers
 from datetime import datetime, timedelta
 from functools import wraps
 from collections import Counter
-from Database.models import all_Operator_creds, all_floor_incharge, all_sites_information, gurugram_assigned_task_by_admin, all_operators_logged_in_status
+from Database.models import Operator_creds, floor_incharge_creds, all_sites_information, gurugram_assigned_task_by_admin, all_operators_logged_in_status, work_assigned_to_operator, parts_info, processes_info, parameters_info, check_sheet_data, check_sheet_data_logs
 from Database.init_and_conf import db
 
 FloorIncharge1=Blueprint('FloorIncharge', __name__)
@@ -85,40 +85,54 @@ def home():
 @FloorIncharge1.route("/floorincharge/signup", methods=['POST'])
 def signup():
     try:
-        username = request.form['username']
-        password = request.form['password']
+        employee_id = request.form['employee_id']
         location = request.form['location']
         building_no = request.form['building_no']
         floor_no = request.form['floor_no']
+        fName = request.form['fName']
+        try:
+            mName = request.form['mName']
+        except Exception as e:
+            mName = ''
+        try:
+            lName = request.form['lName']
+        except Exception as e:
+            lName = ''
+        dob = request.form['dob']
+        mobile = request.form['mobile']
+        email = request.form['email']
+        password = request.form['password']
         
-        user = all_floor_incharge.query.filter_by(user_name = username, password = password, location = location).first()
+        user = floor_incharge_creds.query.filter_by(employee_id=employee_id).first()
         if user:
-            return jsonify({'Response:': 'Floor_Incharge User Already Exists!'})
+            return jsonify({'Response:': 'Floor_Incharge User Already Exists!'}), 200
         else:
-            new_user = all_floor_incharge(user_name=username, location=location, building_no=building_no, floor_no=floor_no, password=password)
+            new_user = floor_incharge_creds(employee_id=employee_id, location=location, building_no=building_no, floor_no=floor_no, fName=fName, mName=mName, lName=lName, dob=dob, mobile=mobile, email=email, password=password)
             db.session.add(new_user)
             db.session.commit()
             return jsonify({'Response:': 'Floor_Incharge User added Successfully!'}), 201
     except:
-        return jsonify({"Error": "Username or Password or location or building_no or floor_no Not Defined"}), 404
+        return jsonify({"Error in adding data":f"Some error occurred while adding the data to the database: {e}"}), 500
 
 
 @FloorIncharge1.route("/floorincharge/login", methods=['POST'])
 def login():
     try:
-        username = request.form['username']
+        employee_id = request.form['employee_id']
         password = request.form['password']
-        location = request.form['location']
         
-        user = all_floor_incharge.query.filter_by(user_name = username, password = password, location = location).first()
+        user = floor_incharge_creds.query.filter_by(employee_id=employee_id).first()
         if user is not None:
-            session['logged_in'] = True
-            token = handlers.create_tocken(username=username, user_id = location)
-            return jsonify({'Response:': 'Floor_Incharge login successfull!', 'token:': f'{token}'})
+            if user.password == password:
+                session['logged_in'] = True
+                token = handlers.create_tocken(employee_id=user.employee_id, mobile_no=user.mobile)
+                return jsonify({'Response:': 'Floor_Incharge login successfull!', 'token:': f'{token}'}), 200
+            else:
+                return jsonify({'Response:': 'Authentication Failed!'}), 401
         else:
-            return jsonify({'Response:': 'Authentication Failed!'}), 401
-    except:
-        return jsonify({"Error": "Username or Password or location Not Defined"}), 404
+            return jsonify({'Response:': 'User Not Found!'}), 404
+    except Exception as e:
+        return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
 
     
     # Replace the hardcoded password check with a secure authentication mechanism
@@ -135,7 +149,7 @@ def login():
 @FloorIncharge1.route("/generate_token")
 def generate_token():
     # Generate the token using your create_token function
-    token_response = handlers.create_tocken(username="example_user", user_id=123)
+    token_response = handlers.create_tocken(employee_id="example_user", mobile_no=123)
 
     # Extract the token from the response
     # token = token_response.get_json().get('token')
@@ -157,28 +171,40 @@ def FloorIncharge():
     return "<h1>This is home page</h1>"
 
 
+################################### Operator signup API #######################################################
 @FloorIncharge1.route("/floorincharge/operator/signup", methods=["POST"])
 def operator_signup():
     try:
-        username = request.form['username']
-        password = request.form['password']
-        mobile = request.form['mobile']
-        email = request.form['email']
-        first_name = request.form['first_name']
-        last_name = request.form['last_name']
+        employee_id = request.form['employee_id']
+        fName = request.form['fName']
+        try:
+            mName = request.form['mName']
+        except:
+            mName = ''
+        try:
+            lName = request.form['lName']
+        except:
+            lName = ''
+        skill_level = request.form['skill_level']
         dob = request.form['dob']
+        mobile = request.form['mobile']
+        email =request.form['email']
+        password = request.form['password']
+        
     except:
         return jsonify({"Error": "Username and Password Not Defined"})
     
     try:
-        user = all_Operator_creds.query.filter_by(email=email).first()
+        user = Operator_creds.query.filter_by(employee_id=employee_id).first()
         if user is None:
-            add_user = all_Operator_creds(username=username, password=password, mobile = mobile, email = email, first_name = first_name, last_name = last_name, dob = dob)
+            add_user = Operator_creds(employee_id=employee_id, fName=fName, mName=mName, lName=lName, skill_level=skill_level, dob=dob, mobile=mobile, email=email, password=password)
             db.session.add(add_user)
             db.session.commit()
             return jsonify({'Response:': "Operator User added successfully!"})
-    except:
-        return jsonify({"Error in adding data":"Some error occurred while adding the data to the database"})
+        else:
+            return jsonify( {"Response":"User already exists."} )
+    except Exception as e:
+        return jsonify({"Error in adding data":f"Some error occurred while adding the data to the database: {e}"})
 
 
 # Floor-Incharge Dashboard all Data API
@@ -189,7 +215,7 @@ def dashboard(**kwargs):
         """Returns a JSON object containing all the data for floor-incharge dashboard"""
         username = kwargs["token_payload"][1]['username']
         date = datetime.now().date()
-        user = all_floor_incharge.query.filter_by(user_name=username).first()
+        user = floor_incharge_creds.query.filter_by(user_name=username).first()
         if user:
             location = user.location
             building_no = user.building_no
@@ -215,142 +241,209 @@ def dashboard(**kwargs):
     except:
         return jsonify({'Error': 'Block is not able to execute successfully'}), 422
 
-# On Line Number Entry Fieled Click
-@FloorIncharge1.route("/floorincharge/assigntask/getline", methods=['GET'])
-@token_required
-def get_line(**kwargs):
+
+############ assign task to stations one by one using this api ###########################
+@FloorIncharge1.route("/floorincharge/assign_task", methods=['POST'])
+# @token_required
+def assign_task():
     try:
-        # Extract parameters from the URL
-        site_location = request.args.get('site_location')
-        building_no = request.args.get('building_no')
-        floor_no = request.args.get('floor_no')
-        
-        if site_location and building_no and floor_no:
-            line_data = all_sites_information.query.filter_by(site_location=site_location, building_no=building_no, floor_no=floor_no).first()
-            if line_data:
-                return jsonify({'line_data:': f'{type(line_data)}'})
-            else:
-                return jsonify({'No Data Found!':'Please add some data.'})
-        else:
-            return jsonify({"Error": 'Site Location, Building No., and Floor No. are required!'})
-    except:
-        return jsonify({"Error in getting data":"Please provide the site_location, building_no, and floor_no in parameters"}), 404
-
-
-# On Part No Entry Fieled Click
-@FloorIncharge1.route("/floorincharge/assigntask/getpart_no", methods=['GET'])
-@token_required
-def get_part_no(**kwargs):
-    try:
-        # Extract parameters from the URL
-        building_no = request.args.get('building_no')
-        floor_no = request.args.get('floor_no')
-        line_no = request.args.get('line_no')
-        # Get the current date and time
-        current_datetime = datetime.utcnow().date()
-        # Calculate one day before
-        one_day_before = current_datetime - timedelta(days=1)
-        part_no = gurugram_assigned_task_by_admin.query.filter_by(building_no=building_no, floor_no=floor_no, line_no = line_no, date = one_day_before).first()
-        i = 2
-        while part_no == False:
-            one_day_before = current_datetime - timedelta(days=i)
-            part_no = gurugram_assigned_task_by_admin.query.filter_by(biulding_no=building_no, floor_no=floor_no, line_no = line_no, date = one_day_before).first()
-            i += 1
-            
-        if part_no:
-            return jsonify({'get_part_no:': f'{part_no.part_number}'})
-        else:
-            return jsonify({'No Data Found part no!':'Please add some data.'})
-    except:
-        return jsonify({"Error in getting data":"Some error occurred while fetching the part no data from the database"}), 402
-
-
-# Response station info after submitting the Line Number and Part Number
-@FloorIncharge1.route("/floorincharge/assigntask/station_name", methods=['GET'])
-@token_required
-def part_no_s_process_and_operator_name(**kwargs):
-    try:
-        # Extract parameters from the URL
-        date = request.args.get('date')
-        building_no = request.args.get('building_no')
-        floor_no = request.args.get('floor_no')
-        line_no = request.args.get('line_no')
-        part_no = request.args.get('part_no')
-        
-        try:
-            station_info = gurugram_assigned_task_by_admin.query.filter_by(building_no=building_no, floor_no=floor_no, line_no = line_no, part_number = part_no, date = date).all()
-        except Exception as e:
-            print('Station_no Query Error:', e)
-        
-        if station_info:
-            total_station_no = []
-            for record in station_info:
-                total_station_no.append(record.station_no)
-            return jsonify({'get_station_info:': f'{total_station_no}'})
-        else:
-            return jsonify({'No Data Found for station info!':'Please add some data.'})
-    except:
-        return jsonify({"Error in getting data":"Some error occurred while fetching the station info data from the database"}), 402
-
-
-# Assign Task to Operator for a part Number
-@FloorIncharge1.route("/floorincharge/assigntask/assigntask", methods=['POST'])
-@token_required
-def change_process_and_operator_name(**kwargs):
-    try:
-        # Extract parameters from the URL
-        date = request.form['date']
-        building_no = request.form['building_no']
-        floor_no = request.form['floor_no']
-        line_no = request.form['line_no']
+        # username = kwargs["token_payload"][1]['username']
+        station_id = request.form['station_id']
+        employee_id = request.form['employee_id']
         part_no = request.form['part_no']
-        process_name = request.form['process_name']
-        station_no = request.form['station_no']
-        app_id = request.form['app_id']
-        operator_username = request.form['operator_username']
+        process_no = request.form['process_no']
+        start_shift_time = request.form['start_shift_time']
+        end_shift_time = request.form['end_shift_time']
+        shift = request.form['shift']
+        assigned_by_owner = request.form['assigned_by_owner']
         
-        assign_task = gurugram_assigned_task_by_admin.query.filter_by(date=date, station_no = station_no).first()
-        
-        if assign_task:
-            # Update existing record
-            assign_task.operator_username = operator_username
-            assign_task.process_name = process_name
-            db.session.commit()
-            return jsonify({'Updated Successfully:': f'Operator {operator_username} has assigned process {process_name}'})
+        total_assigned_task = request.form['total_assigned_task']
+
+        # date = datetime.now().date()
+        station = work_assigned_to_operator.query.filter_by(station_id=station_id).first()
+        if station:
+            return jsonify({'Response': 'Please reset the all task first'})
         else:
-            try:
-                assign_task = gurugram_assigned_task_by_admin(building_no=building_no, floor_no=floor_no, line_no = line_no, part_number = part_no, station_no = station_no, app_id = app_id, operator_username = operator_username, process_name = process_name)
-                db.session.add(assign_task)
-                db.session.commit()
-                return jsonify({'Task Assigned Successfully:': f'Operator {operator_username} has assigned process {process_name}'})
-            except Exception as e:
-                print('Error ######:', e)
+            ####################### this data will retrieve from privious date in work_assigned_to_operator_logs table#################
+            left_for_rework = 0
+            assign_task_obj = work_assigned_to_operator(employee_id=employee_id, station_id=station_id, part_no=part_no, process_no=process_no, start_shift_time=start_shift_time, end_shift_time=end_shift_time, shift=shift, assigned_by_owner=assigned_by_owner, total_assigned_task=total_assigned_task, left_for_rework=left_for_rework)
+            db.session.add(assign_task_obj)
+            db.session.commit()
+            return jsonify({'Response:': "Task assigned successfully to station!"})
         
     except Exception as e:
-        # An error occurred during the transaction
-        print(f"Error: {str(e)}")
-        db.session.rollback()
-        jsonify({"Error in assigning the task": "Some error occurred while fetching the station info data from the database", 'Error is:': f'{e}'}), 402
+        return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
 
 
-# # Check Assigned task By App ID
-# @FloorIncharge1.route('/floorincharge/checkAssignedTaskByAppId/getdata',methods=['GET'])
+######################################## add the parts with their information ###########################################
+@FloorIncharge1.route("/floorincharge/add_part", methods=['POST'])
 # @token_required
-# def check_assigned_task_by_app_id(**kwargs):
-#     try:
-#         # Extract parameters from the URL
-#         date = datetime.utcnow().date()
-#         building_no = request.args.get('building_no')
-#         floor_no = request.args.get('floor_no')
-#         line_no = request.args.get('line_no')
-#         station_no = request.args.get('station_no')
-#         app_id = request.args.get('app_id')
+def add_part():
+    try:
+        parn_name = request.form['parn_name']
+        part_no = request.form['part_no']
+        added_by_owner = request.form['added_by_owner']
+
+        exist_part_no = parts_info.query.filter_by(part_no=part_no).first()
+        if exist_part_no:
+            return jsonify({"Message": "This Part Number already exists."}), 200
+        else:
+            new_parts = parts_info(parn_name=parn_name, part_no=part_no, added_by_owner=added_by_owner)
+            db.session.add(new_parts)
+            db.session.commit()
+            return jsonify({"Message": "New Part has been added Successfully.", "ParName": f"{parn_name}"}),  201
+    
+    # except Exception.IntegrityError:
+    #     db.session.rollback()
+    #     return jsonify({"Message": "There was a problem with your submission."}), 422
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 500
+@FloorIncharge1.route("/floorincharge/get_parts", methods=[ 'GET'])
+# @token_required
+def get_parts():
+    """Returns list of available parts"""
+    try:
+        data=db.session.query(parts_info.part_no, parts_info.parn_name).all()
+        # print(len(data))
+        # for i in range(len(data)):
+        #     part_name = data[i].part_name
+        #     part_no = data[i].part_no
+        parts_data = [{'part_name': part_name, 'part_no': part_no} for part_name, part_no in data]
+        return jsonify({"data: ": parts_data}), 200
+    except Exception as e:
+        return jsonify({'Error': f'Block is not able to fetch records {e}'}), 500
+@FloorIncharge1.route("/floorincharge/update_part", methods=[ 'GET', 'POST'])
+# @token_required
+def update_part():
+    try:
+        part_no = request.form['part_no']
+        get_part = parts_info.query.filter_by(part_no=part_no).first()
+        if get_part:
+            get_part.parn_name = request.form['parn_name'] or get_part.parn_name
+            get_part.part_no = request.form['part_no'] or get_part.part_no
+            get_part.added_by_owner = request.form.get('added_by_owner') or get_part.added_by_owner
+            
+            db.session.commit()
+            return jsonify({"Message":"Part has been updated Successfully"}),200
+        else:
+            return jsonify({"Message":"No part is available"}), 404
+    except Exception as e:
+        return jsonify({'Error': f'Block is not able to fetch records {e}'}), 500
+
+
+########################################## add the process with their information ##########################################
+@FloorIncharge1.route("/floorincharge/add_process", methods=['POST'])
+# @token_required
+def  add_process():
+    try:
+        process_name = request.form['process_name']
+        process_no = request.form['process_no']
+        belongs_to_part = request.form['belongs_to_part']
+        added_by_owner = request.form['added_by_owner']
+
+        exist_part_no = parts_info.query.filter_by(part_no=belongs_to_part).first()
+        if exist_part_no:
+            exist_process_no = processes_info.query.filter_by(process_no=process_no).first()
+            if exist_process_no:
+                return jsonify({"Message": "This Process number already exists."})
+            
+            else:
+                new_process = processes_info(process_name=process_name, process_no=process_no, belongs_to_part=belongs_to_part, added_by_owner=added_by_owner)
+                db.session.add(new_process)
+                db.session.commit()
+                return jsonify({"Message": "New Process has been added Successfully.", "ProcessName": f"{process_name}"}),  201
+        else:
+            return jsonify({"Message":"Part does not exist."}), 404
         
-#         assigned_task_to_station = assigned_task_by_admin.query.filter_by(building_no=building_no, floor_no=floor_no, date=date, station_no = station_no,  line_no = line_no, app_id = app_id).first()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
+@FloorIncharge1.route("/floorincharge/get_processes", methods=[ 'GET', 'POST'])
+# @token_required
+def get_processes():
+    """Returns list of available parts"""
+    try:
+        part_no = request.form['part_no']
+        exist_part = parts_info.query.filter_by(part_no=part_no).first()
+        if exist_part:
+            processes = processes_info.query.filter_by(belongs_to_part=part_no).all()
+            if processes:
+                print(processes[0].process_name)
+                process_data = [
+                    {'process_name': process.process_name, 'process_no': process.process_no}
+                    for process in processes
+                ]
+                # print(process_data)
+                return jsonify({"data: ": process_data}), 200
+            else:
+                return jsonify({'Message': 'No processes available for this part'}), 404
+        else:
+            return jsonify( {'Message':'No such Part Found.'} ), 404
+    except Exception as e:
+        return jsonify({'Error': f'Block is not able to fetch records {e}'}), 500
+
+
+######################################## add the parameters of processes with their information ###############################
+@FloorIncharge1.route("/floorincharge/add_parameter", methods=['POST'])
+# @token_required
+def add_parameter():
+    try:
+        parameter_name = request.form['parameter_name']
+        parameter_no = request.form['parameter_no']
+        process_no = request.form['process_no']
+        belongs_to_part = request.form['belongs_to_part']
+        added_by_owner = request.form['added_by_owner']
         
-#         if assigned_task_to_station:
-#             return jsonify({'Assigned:': 'Task has Assigned to this station', 'operator_username:': f'{assigned_task_to_station.operator_username}'})
-#         else:
-#             return jsonify({'Not Assigned:': 'Task Has not Assigned To This Satation Yet'})
-#     except Exception as e:
-#         return jsonify({'Error in Try block:': f'{e}'})
+        exist_process_no = processes_info.query.filter_by(process_no=process_no).first()
+        
+        if exist_process_no:        
+            exist_parameter_no =   parameters_info.query.filter_by(parameter_no=parameter_no).first()
+            if exist_parameter_no:
+                return jsonify({"Message": "This Parameters number already exists."}), 200
+            
+            else:
+                new_process = processes_info(parameter_name=parameter_name, parameter_no=parameter_no, process_no=process_no, belongs_to_part=belongs_to_part, added_by_owner=added_by_owner)
+                db.session.add(new_process)
+                db.session.commit()
+                return jsonify({"Message": "New Process has been added Successfully.", "ProcessName": f"{parameter_name}"}),  201
+        else:
+            return jsonify({"Message":"Process does not exist."}), 404
+    
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
+
+
+#################################################### check sheet with all information and logs  ##############################
+@FloorIncharge1.route("/floorincharge/add_checksheet", methods=['POST'])
+# @token_required
+def add_checksheet():
+    try:
+        csp_id = request.form['csp_id']
+        csp_name = request.form['csp_name']
+        added_by_owner = request.form['added_by_owner']
+        
+        exist_parameter_id = check_sheet_data.query.filter_by(parameter_id=csp_id).first()
+        if exist_parameter_id:
+            return  jsonify({"Message": "Parameter has been already added"}), 304
+        else:
+            new_parameter = check_sheet_data(parameter_id=csp_id, parameter_name=csp_name, added_by_owner=added_by_owner)
+            db.session.add(new_parameter)
+            db.session.commit()
+            return jsonify({"Message": "Data Added Successfully","Id":csp_id,"Name":csp_name}), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
+@FloorIncharge1.route("/floorincharge/checksheet/add_logs", methods=['POST'])
+# @token_required
+def checksheet_add_logs():
+    try:
+        csp_id = request.form['csp_id']
+        oprtr_employee_id = request.form['oprtr_employee_id']
+        flrInchr_employee_id = request.form['flrInchr_employee_id']
+        status_datas = request.form['status_datas']
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
