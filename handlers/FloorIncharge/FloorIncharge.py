@@ -394,6 +394,10 @@ def add_parameter():
         process_no = request.form['process_no']
         belongs_to_part = request.form['belongs_to_part']
         added_by_owner = request.form['added_by_owner']
+        min = request.form['min']
+        max = request.form['max']
+        unit = request.form['unit']
+        FPA_status = request.form['FPA_status']
         
         exist_process_no = processes_info.query.filter_by(process_no=process_no).first()
         
@@ -403,7 +407,7 @@ def add_parameter():
                 return jsonify({"Message": "This Parameters number already exists."}), 200
             
             else:
-                new_process = processes_info(parameter_name=parameter_name, parameter_no=parameter_no, process_no=process_no, belongs_to_part=belongs_to_part, added_by_owner=added_by_owner)
+                new_process = processes_info(parameter_name=parameter_name, parameter_no=parameter_no, process_no=process_no, belongs_to_part=belongs_to_part, min=min, max=max, unit=unit, FPA_status=FPA_status, added_by_owner=added_by_owner)
                 db.session.add(new_process)
                 db.session.commit()
                 return jsonify({"Message": "New Process has been added Successfully.", "ProcessName": f"{parameter_name}"}),  201

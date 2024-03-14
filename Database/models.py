@@ -189,15 +189,46 @@ class  processes_info(db.Model):
     date_time = db.Column(db.DateTime, default=datetime.now(pytz.timezone('Asia/Kolkata')))
 
 
-##################################### all parameters information table #####################################
+#################### all parameters information table or Set Up and First Part Approval######################
 class parameters_info(db.Model):
     # id = db.Column(db.Integer, autoincrement=True)
     parameter_name = db.Column(db.String(length=220), nullable=False)
     parameter_no = db.Column(db.String(length=60), primary_key=True)
     process_no = db.Column(db.String(length=40), nullable=False)
     belongs_to_part = db.Column(db.String(length=20), nullable=False)
+    min = db.Column(db.String(length=15))
+    max = db.Column(db.String(length=15))
+    unit = db.Column(db.String(length=20))
+    FPA_status = db.Column(db.Boolean, default=False)
     added_by_owner = db.Column(db.String(30), nullable=False)
     date_time = db.Column(db.DateTime, default=datetime.now(pytz.timezone('Asia/Kolkata')))
+
+class  fpa_and_set_up_approved_records(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    operator_employee_id = db.Column(db.String(length=20), nullable=False, index=True)
+    start_shift_1_parameters_values = db.Column(db.String(length=1500))
+    start_shift_1_time = db.Column(db.Time)
+    start_shift_2_parameters_values = db.Column(db.String(length=1500))
+    start_shift_2_time = db.Column(db.Time)
+    end_shift_1_parameters_values = db.Column(db.String(length=1500))
+    end_shift_1_time = db.Column(db.Time)
+    end_shift_2_parameters_values = db.Column(db.String(length=1500))
+    end_shift_2_time = db.Column(db.Time)
+    date = db.Column(db.Date, nullable=False, index=True)
+
+class  fpa_and_set_up_approved_records_logs(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    operator_employee_id = db.Column(db.String(length=20), nullable=False)
+    start_shift_1_parameters_values = db.Column(db.String(length=50))
+    start_shift_1_time = db.Column(db.Time)
+    start_shift_2_parameters_values = db.Column(db.String(length=50))
+    start_shift_2_time = db.Column(db.Time)
+    end_shift_1_parameters_values = db.Column(db.String(length=50))
+    end_shift_1_time = db.Column(db.Time)
+    end_shift_2_parameters_values = db.Column(db.String(length=50))
+    end_shift_2_time = db.Column(db.Time)
+    date = db.Column(db.Date, nullable=False)
+
 
 
 #################################### all stations information logs ##########################################
@@ -246,3 +277,4 @@ class check_sheet_data_logs(db.Model):
 ######################################### poka yoke verification ka logic lagana hai #################################################
 ######################################################################################################################################
 ################# create poka yoke verification and FPA column and for process settings parameters ###################################
+

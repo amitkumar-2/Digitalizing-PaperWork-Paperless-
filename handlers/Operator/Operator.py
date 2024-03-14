@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, session, jsonify, make_re
 import handlers
 from datetime import datetime, timedelta
 from functools import wraps
-from Database.models import Operator_creds, floor_incharge_creds, all_sites_information, gurugram_assigned_task_by_admin, all_operators_logged_in_status, work_assigned_to_operator
+from Database.models import Operator_creds, floor_incharge_creds, all_sites_information, gurugram_assigned_task_by_admin, all_operators_logged_in_status, work_assigned_to_operator, fpa_and_set_up_approved_records
 from Database.init_and_conf import db
 
 Operator1=Blueprint('Operator', __name__)
@@ -103,3 +103,131 @@ def check_assigned_task_by_app_id(**kwargs):
             return jsonify({'Not Assigned:': 'Task Has not Assigned To This Satation Yet'})
     except Exception as e:
         return jsonify({'Error in Try block:': f'{e}'}), 402
+
+
+
+
+
+#########################################################################################################################
+################################################# update assigned task datas ############################################
+#########################################################################################################################
+
+@Operator1.route("/operator/add_and_update/work", methods=['POST'])
+# @token_required
+def add_work():
+    # try:
+    #     operator_employee_id = request.form['operator_employee_id']
+    #     date = datetime.now().date()
+        
+        
+    #     exist_operator_today = fpa_and_set_up_approved_records.query.filter_by(operator_employee_id=operator_employee_id, date=date).first()
+    #     if exist_operator_today:
+    #         # try:
+    #         #     start_shift_1_parameters_values = request.form['start_shift_1_parameters_values']
+    #         #     if start_shift_1_parameters_values and not exist_operator_today.start_shift_1_parameters_values:
+    #         #         start_shift_1_parameters_values.start_shift_1_parameters_values = start_shift_1_parameters_values or start_shift_1_parameters_values.start_shift_1_parameters_values
+    #         #         start_shift_1_time = datetime.now().time()
+    #         #         exist_operator_today.start_shift_1_time = start_shift_1_time or exist_operator_today.start_shift_1_time
+    #         #         db.session.commit()
+    #         #         return jsonify({"Message":"Your work for start shift 1 is added Successfully"}),200
+    #         #     else:
+    #         #         pass
+    #         # except:
+    #         #     pass
+    #         # start_shift_1_time = request.form['start_shift_1_time']
+    #         try:
+    #             start_shift_2_parameters_values = request.form['start_shift_2_parameters_values']
+    #             if start_shift_2_parameters_values and not exist_operator_today.start_shift_2_parameters_values:
+    #                 start_shift_2_parameters_values.start_shift_2_parameters_values = start_shift_2_parameters_values or start_shift_2_parameters_values.start_shift_2_parameters_values
+    #                 start_shift_2_time = datetime.now().time()
+    #                 exist_operator_today.start_shift_2_time = start_shift_2_time or exist_operator_today.start_shift_2_time
+    #                 db.session.commit()
+    #                 return jsonify({"Message":"Your work for start shift 2 is added Successfully"}),200
+    #             else:
+    #                 return jsonify({"Message":f"try block 2 {e}"}), 500
+    #                 pass
+    #         except:
+    #             pass
+    #         # start_shift_2_time = request.form['start_shift_2_time']
+    #         try:
+    #             end_shift_1_parameters_values = request.form['end_shift_1_parameters_values']
+    #             if end_shift_1_parameters_values and not exist_operator_today.end_shift_1_parameters_values:
+    #                 end_shift_1_parameters_values.end_shift_1_parameters_values = end_shift_1_parameters_values or end_shift_1_parameters_values.end_shift_1_parameters_values
+    #                 end_shift_1_time = datetime.now().time()
+    #                 exist_operator_today.end_shift_1_time = end_shift_1_time or exist_operator_today.end_shift_1_time
+    #                 db.session.commit()
+    #                 return jsonify({"Message":"Your work for end shift 1 is added Successfully"}),200
+    #             else:
+    #                 return jsonify({"Message":f"try block 3 {e}"}), 500
+    #                 pass
+    #         except:
+    #             pass
+    #         # end_shift_1_time = request.form['end_shift_1_time']
+    #         try:
+    #             end_shift_2_parameters_values = request.form['end_shift_2_parameters_values']
+    #             if end_shift_2_parameters_values and not exist_operator_today.end_shift_2_parameters_values:
+    #                 end_shift_2_parameters_values.end_shift_2_parameters_values = end_shift_2_parameters_values or end_shift_2_parameters_values.end_shift_2_parameters_values
+    #                 end_shift_2_time = datetime.now().time()
+    #                 exist_operator_today.end_shift_2_time = end_shift_2_time or exist_operator_today.end_shift_2_time
+    #                 db.session.commit()
+    #                 return jsonify({"Message":"Your work for end shift 2 is added Successfully"}),200
+    #             else:
+    #                 pass
+    #         except Exception as e:
+    #             return jsonify({"Message":f"try block 4 {e}"}), 500
+    #             pass
+    #         # end_shift_2_time = request.form['end_shift_2_time']
+    #     else:
+    #         try:
+    #             start_shift_1_parameters_values = request.form['start_shift_1_parameters_values']
+    #             start_shift_1_time = datetime.now().time()
+    #             # date = datetime.now().date()
+    #             add_new_work = fpa_and_set_up_approved_records(operator_employee_id=operator_employee_id, start_shift_1_parameters_values=start_shift_1_parameters_values, start_shift_1_time=start_shift_1_time, date=date)
+    #             db.session.add(add_new_work)
+    #             db.session.commit()
+    #             return jsonify({"Message":"Your work for start shift 1 is added Successfully"}),200
+    #         except:
+    #             return jsonify({"Message":f"try block 1 {e}"}), 500
+    #             pass
+    
+    
+    try:
+        operator_employee_id = request.form['operator_employee_id']
+        date = datetime.now().date()
+
+        existing_operator_today = fpa_and_set_up_approved_records.query.filter_by(
+            operator_employee_id=operator_employee_id, date=date
+        ).first()
+
+        if existing_operator_today:
+            updated = False  # Flag to check if update is needed
+
+            for shift in ['start_shift_1', 'start_shift_2', 'end_shift_1', 'end_shift_2']:
+                parameters_values_key = f"{shift}_parameters_values"
+                time_key = f"{shift}_time"
+
+                if request.form.get(parameters_values_key) and not getattr(existing_operator_today, parameters_values_key):
+                    setattr(existing_operator_today, parameters_values_key, request.form[parameters_values_key])
+                    setattr(existing_operator_today, time_key, datetime.now().time())
+                    updated = True
+
+            if updated:
+                db.session.commit()
+                return jsonify({"Message": "Your work updates have been saved successfully"}), 200
+            else:
+                return jsonify({"Message": "No updates were necessary"}), 200
+        else:
+            new_work = fpa_and_set_up_approved_records(
+                operator_employee_id=operator_employee_id,
+                start_shift_1_parameters_values=request.form.get('start_shift_1_parameters_values', ''),
+                start_shift_1_time=datetime.now().time() if request.form.get('start_shift_1_parameters_values') else None,
+                date=date
+            )
+            db.session.add(new_work)
+            db.session.commit()
+            return jsonify({"Message": "Your new work record has been added successfully"}), 200
+
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
