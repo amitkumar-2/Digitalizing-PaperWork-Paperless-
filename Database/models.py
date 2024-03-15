@@ -200,6 +200,7 @@ class parameters_info(db.Model):
     max = db.Column(db.String(length=15))
     unit = db.Column(db.String(length=20))
     FPA_status = db.Column(db.Boolean, default=False)
+    readings_is_available = db.Column(db.Boolean, default=False)
     added_by_owner = db.Column(db.String(30), nullable=False)
     date_time = db.Column(db.DateTime, default=datetime.now(pytz.timezone('Asia/Kolkata')))
 
@@ -273,8 +274,44 @@ class check_sheet_data_logs(db.Model):
     date_time = db.Column(db.DateTime, default=datetime.now(pytz.timezone('Asia/Kolkata')))
 
 
-######################################################################################################################################
-######################################### poka yoke verification ka logic lagana hai #################################################
-######################################################################################################################################
-################# create poka yoke verification and FPA column and for process settings parameters ###################################
 
+############################################## table to get reading status for parameters ##################################
+class reading_params(db.Model):
+    parameter_no = db.Column(db.String(length=60), primary_key=True)
+    reading_1 = db.Column(db.String(length=10))
+    reading_1_time = db.Column(db.Time)
+    reading_2 = db.Column(db.String(length=10))
+    reading_2_time = db.Column(db.Time)
+    reading_3 = db.Column(db.String(length=10))
+    reading_3_time = db.Column(db.Time)
+    reading_4 = db.Column(db.String(length=10))
+    reading_4_time = db.Column(db.Time)
+    reading_5 = db.Column(db.String(length=10))
+    reading_5_time = db.Column(db.Time)
+    operator_employee_id = db.Column(db.String(length=20), nullable=False)
+    date = db.Column(db.Date, default=datetime.now(pytz.timezone('Asia/Kolkata')).date())
+
+class reading_params_logs(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    parameter_no = db.Column(db.String(length=60), nullable=False)
+    reading_1 = db.Column(db.String(length=10), nullable=False)
+    reading_1_time = db.Column(db.Time, nullable=False)
+    reading_2 = db.Column(db.String(length=10), nullable=False)
+    reading_2_time = db.Column(db.Time, nullable=False)
+    reading_3 = db.Column(db.String(length=10), nullable=False)
+    reading_3_time = db.Column(db.Time, nullable=False)
+    reading_4 = db.Column(db.String(length=10), nullable=False)
+    reading_4_time = db.Column(db.Time, nullable=False)
+    reading_5 = db.Column(db.String(length=10), nullable=False)
+    reading_5_time = db.Column(db.Time, nullable=False)
+    operator_employee_id = db.Column(db.String(length=20), nullable=False)
+    date = db.Column(db.Date, default=datetime.now(pytz.timezone('Asia/Kolkata')).date())
+
+
+
+################################################## UCL and LCL table for params #######################################
+class params_ucl_lcl(db.Model):
+    parameter_no = db.Column(db.String(length=60), primary_key=True)
+    UCL = db.Column(db.Float)
+    LCL = db.Column(db.Float)
+    date_time = db.Column(db.DateTime, default=datetime.now(pytz.timezone('Asia/Kolkata')))

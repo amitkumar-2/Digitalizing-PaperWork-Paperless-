@@ -1,8 +1,9 @@
 from flask import Blueprint, render_template, request, session, jsonify, make_response
+# from handlers import is_token_expired
 import handlers
 from datetime import datetime, timedelta
 from functools import wraps
-from Database.models import Operator_creds, floor_incharge_creds, all_sites_information, gurugram_assigned_task_by_admin, all_operators_logged_in_status, work_assigned_to_operator, fpa_and_set_up_approved_records
+from Database.models import Operator_creds, floor_incharge_creds, all_sites_information, gurugram_assigned_task_by_admin, all_operators_logged_in_status, work_assigned_to_operator, fpa_and_set_up_approved_records, reading_params
 from Database.init_and_conf import db
 
 Operator1=Blueprint('Operator', __name__)
@@ -16,7 +17,7 @@ def token_required(func):
         if not token:
             return jsonify({'Alert!': 'Token is missing!'})
         try:
-            payload = handlers.is_token_expired(token)
+            payload = is_token_expired(token)
             # Add the token payload to the kwargs so that it's available to the protected route
             kwargs['token_payload'] = payload
             if payload[0] == False:
@@ -226,6 +227,56 @@ def add_work():
             db.session.add(new_work)
             db.session.commit()
             return jsonify({"Message": "Your new work record has been added successfully"}), 200
+
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
+
+
+
+##################################################### add and update readings by operator ##########################################
+@Operator1.route("/operator/add_and_update/readings", methods=['POST'])
+# @token_required
+def add_reading():
+    try:
+        operator_employee_id = request.form['operator_employee_id']
+        parameter_no = request.form['parameter_no']
+        # operator_employee_id = request.form['operator_employee_id']
+        date = datetime.now().date()
+
+        existing_parameter = reading_params.query.filter_by(
+            parameter_no=parameter_no, date=date
+        ).first()
+
+        if existing_parameter:
+            updated = False  # Flag to check if update is needed
+
+            for no in [1,2,3,4,5]:
+                reading_values_key = f"reading_{no}"
+                time_key = f"reading_{no}_time"
+
+                if request.form.get(reading_values_key) and not getattr(existing_parameter, reading_values_key):
+                    setattr(existing_parameter, reading_values_key, request.form[reading_values_key])
+                    setattr(existing_parameter, time_key, datetime.now().time())
+                    updated = True
+
+            if updated:
+                db.session.commit()
+                return jsonify({"Message": "Your reading updates have been saved successfully"}), 200
+            else:
+                return jsonify({"Message": "No reading were necessary to update"}), 200
+        else:
+            new_reading = reading_params(
+                operator_employee_id=operator_employee_id,
+                parameter_no=parameter_no,
+                reading_1=request.form.get('reading_1', ''),
+                reading_1_time=datetime.now().time() if request.form.get('reading_1') else None,
+                date=date
+            )
+            db.session.add(new_reading)
+            db.session.commit()
+            return jsonify({"Message": "Your new reading record has been added successfully"}), 200
 
         
     except Exception as e:
