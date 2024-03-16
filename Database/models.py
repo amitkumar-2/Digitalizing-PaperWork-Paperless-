@@ -123,10 +123,10 @@ class gurugram_station_performance(db.Model):
 
 ################################# companies all stations info ##########################################
 class stations(db.Model):
-    id = db.Column(db.Integer, autoincrement=True)
-    station_id = db.Column(db.String(length=15), unique=True, primary_key=True)
-    line_no = db.Column(db.String(length=10), nullable=False)
-    floor_no = db.Column(db.String(length=10), nullable=False)
+    # id = db.Column(db.Integer, autoincrement=True)
+    station_id = db.Column(db.String(length=25), unique=True, primary_key=True)
+    line_no = db.Column(db.String(length=20), nullable=False)
+    floor_no = db.Column(db.String(length=20), nullable=False)
     building_no = db.Column(db.String(length=10), nullable=False)
     location = db.Column(db.String(length=25), nullable=False)
     added_by_owner = db.Column(db.String(length=15), nullable=False)
@@ -136,10 +136,10 @@ class stations(db.Model):
 ################################# work assigned to operator table ######################################
 class work_assigned_to_operator(db.Model):
     # id = db.Column(db.Integer, autoincrement=True)
-    employee_id = db.Column(db.String(length=20), nullable=False)
+    employee_id = db.Column(db.String(length=20), nullable=False, unique=True)
     station_id = db.Column(db.String(length=15), primary_key=True, nullable=False)
     part_no = db.Column(db.String(length=20), nullable=False)
-    process_no = db.Column(db.String(length=20), nullable=False)
+    process_no = db.Column(db.String(length=20), nullable=False, unique=True)
     start_shift_time = db.Column(db.Time, nullable=False)
     end_shift_time = db.Column(db.Time, nullable=False)
     shift = db.Column(db.String(length=2), nullable=False)

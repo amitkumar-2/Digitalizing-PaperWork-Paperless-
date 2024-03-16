@@ -1,7 +1,8 @@
-from flask import request, jsonify, session
+from flask import request, jsonify, session, current_app
 from Database.init_and_conf import db
 from Database.models import floor_incharge_creds, Operator_creds, parts_info, processes_info, parameters_info, check_sheet_data
-from handlers import create_tocken
+# from handlers import create_tocken
+from Config.token_handler import TokenRequirements
 
 def signup():
     try:
@@ -35,17 +36,17 @@ def signup():
         return jsonify({"Error in adding data":f"Some error occurred while adding the data to the database: {e}"}), 500
 
 
-def login():
+def login(data):
     try:
-        employee_id = request.form['employee_id']
-        password = request.form['password']
+        employee_id = data.get('employee_id')
+        password = data.get('password')
         
         user = floor_incharge_creds.query.filter_by(employee_id=employee_id).first()
         if user is not None:
             if user.password == password:
                 session['logged_in'] = True
-                token = create_tocken(employee_id=user.employee_id, mobile_no=user.mobile)
-                return jsonify({'Response:': 'Floor_Incharge login successfull!', 'token:': f'{token}', 'fName':f'{user.fName}', 'lName':f'{user.lName}', 'building_no': f'{user.building_no}', 'floor_no': f'{user.floor_no}'}), 200
+                token = TokenRequirements.create_token(employee_id=user.employee_id, mobile_no=user.mobile, secret_key=current_app.config['SECRET_KEY'])
+                return jsonify({'Response:': 'Floor_Incharge login successfull!', 'token': f'{token}', 'fName':f'{user.fName}', 'lName':f'{user.lName}', 'building_no': f'{user.building_no}', 'floor_no': f'{user.floor_no}'}), 200
             else:
                 return jsonify({'Response:': 'Authentication Failed!'}), 401
         else:
@@ -54,23 +55,23 @@ def login():
         return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
 
 
-def operator_signup():
+def operator_signup(data):
     try:
-        employee_id = request.form['employee_id']
-        fName = request.form['fName']
+        employee_id = data.get('employee_id')
+        fName = data.get('fName')
         try:
-            mName = request.form['mName']
+            mName = data.get('mName')
         except:
             mName = ''
         try:
-            lName = request.form['lName']
+            lName = data.get('lName')
         except:
             lName = ''
-        skill_level = request.form['skill_level']
-        dob = request.form['dob']
-        mobile = request.form['mobile']
-        email =request.form['email']
-        password = request.form['password']
+        skill_level = data.get('skill_level')
+        dob = data.get('dob')
+        mobile = data.get('mobile')
+        email =data.get('email')
+        password = data.get('password')
         
     except:
         return jsonify({"Error": "Username and Password Not Defined"})
@@ -87,11 +88,11 @@ def operator_signup():
     except Exception as e:
         return jsonify({"Error in adding data":f"Some error occurred while adding the data to the database: {e}"})
 
-def add_part():
+def add_part(data):
     try:
-        parn_name = request.form['parn_name']
-        part_no = request.form['part_no']
-        added_by_owner = request.form['added_by_owner']
+        parn_name = data.get('parn_name')
+        part_no = data.get('part_no')
+        added_by_owner = data.get('added_by_owner')
 
         exist_part_no = parts_info.query.filter_by(part_no=part_no).first()
         if exist_part_no:
@@ -101,13 +102,9 @@ def add_part():
             db.session.add(new_parts)
             db.session.commit()
             return jsonify({"Message": "New Part has been added Successfully.", "ParName": f"{parn_name}"}),  201
-    
-    # except Exception.IntegrityError:
-    #     db.session.rollback()
-    #     return jsonify({"Message": "There was a problem with your submission."}), 422
     except Exception as e:
         db.session.rollback()
-        return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 500
+        return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
 
 def get_parts():
     """Returns list of available parts"""
@@ -122,14 +119,14 @@ def get_parts():
     except Exception as e:
         return jsonify({'Error': f'Block is not able to fetch records {e}'}), 500
 
-def update_part():
+def update_part(data):
     try:
-        part_no = request.form['part_no']
+        part_no = data.get('part_no')
         get_part = parts_info.query.filter_by(part_no=part_no).first()
         if get_part:
-            get_part.parn_name = request.form['parn_name'] or get_part.parn_name
-            get_part.part_no = request.form['part_no'] or get_part.part_no
-            get_part.added_by_owner = request.form.get('added_by_owner') or get_part.added_by_owner
+            get_part.parn_name = data.get('parn_name') or get_part.parn_name
+            get_part.part_no = data.get('part_no') or get_part.part_no
+            get_part.added_by_owner = data.get('added_by_owner') or get_part.added_by_owner
             
             db.session.commit()
             return jsonify({"Message":"Part has been updated Successfully"}),200
@@ -138,12 +135,12 @@ def update_part():
     except Exception as e:
         return jsonify({'Error': f'Block is not able to fetch records {e}'}), 500
 
-def  add_process():
+def  add_process(data):
     try:
-        process_name = request.form['process_name']
-        process_no = request.form['process_no']
-        belongs_to_part = request.form['belongs_to_part']
-        added_by_owner = request.form['added_by_owner']
+        process_name = data.get('process_name')
+        process_no = data.get('process_no')
+        belongs_to_part = data.get('belongs_to_part')
+        added_by_owner = data.get('added_by_owner')
 
         exist_part_no = parts_info.query.filter_by(part_no=belongs_to_part).first()
         if exist_part_no:
@@ -163,10 +160,10 @@ def  add_process():
         db.session.rollback()
         return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
 
-def get_processes():
+def get_processes(data):
     """Returns list of available parts"""
     try:
-        part_no = request.form['part_no']
+        part_no = data.get('part_no')
         exist_part = parts_info.query.filter_by(part_no=part_no).first()
         if exist_part:
             processes = processes_info.query.filter_by(belongs_to_part=part_no).all()
@@ -185,17 +182,17 @@ def get_processes():
     except Exception as e:
         return jsonify({'Error': f'Block is not able to fetch records {e}'}), 500
 
-def add_parameter():
+def add_parameter(data):
     try:
-        parameter_name = request.form['parameter_name']
-        parameter_no = request.form['parameter_no']
-        process_no = request.form['process_no']
-        belongs_to_part = request.form['belongs_to_part']
-        added_by_owner = request.form['added_by_owner']
-        min = request.form['min']
-        max = request.form['max']
-        unit = request.form['unit']
-        FPA_status = request.form['FPA_status']
+        parameter_name = data.get('parameter_name')
+        parameter_no = data.get('parameter_no')
+        process_no = data.get('process_no')
+        belongs_to_part = data.get('belongs_to_part')
+        added_by_owner = data.get('added_by_owner')
+        min = data.get('min')
+        max = data.get('max')
+        unit = data.get('unit')
+        FPA_status = data.get('FPA_status')
         
         exist_process_no = processes_info.query.filter_by(process_no=process_no).first()
         
@@ -216,11 +213,11 @@ def add_parameter():
         db.session.rollback()
         return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
 
-def add_checksheet():
+def add_checksheet(data):
     try:
-        csp_id = request.form['csp_id']
-        csp_name = request.form['csp_name']
-        added_by_owner = request.form['added_by_owner']
+        csp_id = data.get('csp_id')
+        csp_name = data.get('csp_name')
+        added_by_owner = data.get('added_by_owner')
         
         exist_parameter_id = check_sheet_data.query.filter_by(parameter_id=csp_id).first()
         if exist_parameter_id:
