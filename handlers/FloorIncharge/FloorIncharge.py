@@ -14,9 +14,10 @@ import handlers
 from datetime import datetime, timedelta
 from functools import wraps
 from collections import Counter
-from Database.models import Operator_creds, floor_incharge_creds, all_sites_information, gurugram_assigned_task_by_admin, all_operators_logged_in_status, work_assigned_to_operator, parts_info, processes_info, parameters_info, check_sheet_data, check_sheet_data_logs
+from Database.models import Operator_creds, floor_incharge_creds, work_assigned_to_operator, parts_info, processes_info, parameters_info, check_sheet_data, check_sheet_data_logs
 from Database.init_and_conf import db
-from Models.FloorIncharge.FloorIncharge import login, operator_signup, add_part, get_parts, update_part, add_process, get_processes, add_parameter, add_checksheet
+from Models.FloorIncharge.FloorIncharge import login, operator_signup, add_part, get_parts, update_part, add_process, get_processes, add_parameter, add_checksheet, stations_info, stations_current_status, refresh_data
+from Config.token_handler import TokenRequirements
 
 FloorIncharge1=Blueprint('FloorIncharge', __name__)
 
@@ -227,8 +228,8 @@ def assign_task():
 def add_part_handler():
     return add_part(request.form)
 @FloorIncharge1.route("/floorincharge/get_parts", methods=[ 'GET'])
-# @token_required
-def get_parts_handler():
+@TokenRequirements.token_required
+def get_parts_handler(**kwargs):
     return get_parts()
 @FloorIncharge1.route("/floorincharge/update_part", methods=[ 'GET', 'POST'])
 # @token_required
@@ -270,3 +271,25 @@ def checksheet_add_logs():
     except Exception as e:
         db.session.rollback()
         return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
+
+
+####################################################### getting staions info #######################################################
+@FloorIncharge1.route("/floorincharge/stations_info", methods=['POST'])
+@TokenRequirements.token_required
+def stations_info_hendler(**kwargs):
+    return stations_info(request.form)
+
+########################################## getting staions current status #######################################
+@FloorIncharge1.route("/floorincharge/stations_current_status", methods=['GET'])
+@TokenRequirements.token_required
+def stations_current_status_handler(**kwargs):
+    return stations_current_status()
+
+
+########################################## refresh stations static information #######################################
+@FloorIncharge1.route("/floorincharge/refresh_data", methods=['GET'])
+@TokenRequirements.token_required
+def refresh_data_handler(**kwargs):
+    return refresh_data()
+
+################################################### get FPA history ############################################

@@ -3,9 +3,9 @@ from flask import Blueprint, render_template, request, session, jsonify, make_re
 from Config.token_handler import TokenRequirements
 from datetime import datetime, timedelta
 from functools import wraps
-from Database.models import Operator_creds, floor_incharge_creds, all_sites_information, gurugram_assigned_task_by_admin, all_operators_logged_in_status, work_assigned_to_operator, fpa_and_set_up_approved_records, reading_params
+from Database.models import Operator_creds, floor_incharge_creds, work_assigned_to_operator, fpa_and_set_up_approved_records, reading_params
 from Database.init_and_conf import db
-from Models.Operator.Operator import operator_login, add_work, add_reading, stations_info, stations_current_status
+from Models.Operator.Operator import operator_login, add_work, add_reading
 
 
 Operator1=Blueprint('Operator', __name__)
@@ -105,15 +105,3 @@ def add_work_handler():
 # @token_required
 def add_reading_handler():
     return add_reading(request.form)
-
-####################################################### getting staions info #######################################################
-@Operator1.route("/operator/stations_info", methods=['GET'])
-@TokenRequirements.token_required
-def stations_info_hendler(**kwargs):
-    return stations_info(request.form)
-
-########################################## getting staions current status #######################################
-@Operator1.route("/operator/stations_current_status", methods=['GET'])
-@TokenRequirements.token_required
-def stations_current_status_handler(**kwargs):
-    return stations_current_status(request.form)

@@ -1,6 +1,6 @@
 from flask import request, jsonify, session, current_app
 from Database.init_and_conf import db
-from Database.models import floor_incharge_creds, Operator_creds, parts_info, processes_info, parameters_info, check_sheet_data
+from Database.models import floor_incharge_creds, Operator_creds, parts_info, processes_info, parameters_info, check_sheet_data, stations, work_assigned_to_operator
 # from handlers import create_tocken
 from Config.token_handler import TokenRequirements
 
@@ -238,6 +238,88 @@ def checksheet_add_logs():
         oprtr_employee_id = request.form['oprtr_employee_id']
         flrInchr_employee_id = request.form['flrInchr_employee_id']
         status_datas = request.form['status_datas']
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
+
+
+def stations_info(data):
+    try:
+        floor_no = data.get('floor_no')
+        print(floor_no)
+        all_stations = []
+
+        current_lines_data = stations.query.filter_by(floor_no=floor_no).all()
+        # print(current_lines_data)
+        if current_lines_data:
+            for entity in range(0, len(current_lines_data)):
+                all_stations.append(current_lines_data[entity].station_id)
+            # all_duplicates = dict(Counter(all_stations))
+            
+            # Create a dictionary to store the results
+            stations_dict = {}
+
+            # Iterate over the list to populate the dictionary
+            for station in all_stations:
+                # Extract the prefix (assuming the prefix always ends before the last ' S')
+                prefix = station.rsplit(' S', 1)[0]
+                # Add the station to the list associated with the prefix in the dictionary
+                if prefix in stations_dict:
+                    stations_dict[prefix].append(station)
+                else:
+                    stations_dict[prefix] = [station]
+                    
+            return jsonify({"totalLines":f"{len(stations_dict)}", "lines":f'{list(stations_dict)}', "All_stations":f'{stations_dict}'}), 200
+        else:
+            return jsonify({"Message":"Employess datas does not exist."}), 404
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
+
+
+def stations_current_status():
+    try:
+        all_stations_status = db.session.query(work_assigned_to_operator.station_id, work_assigned_to_operator.failed, work_assigned_to_operator.passed, work_assigned_to_operator.filled).all()
+        all_stations_data = [{'station_id': station_id, 'failed': failed, 'passed': passed, 'filled': filled} for station_id, failed, passed, filled in all_stations_status]
+        # print(all_stations_data)
+        return jsonify({"all_stations_data": all_stations_data})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
+
+
+def refresh_data():
+    try:
+        station_ids = ['G01 F01 L04 S03', 'G01 F01 L04 S02', 'G01 F01 L04 S05']
+        
+        # Querying the database for records where the station_id matches any in the list
+        matched_stations = db.session.query(work_assigned_to_operator).filter(work_assigned_to_operator.station_id.in_(station_ids)).all()
+        # print(matched_stations[0].employee_id)
+        if matched_stations:
+            employee_ids = []
+            for station_data in matched_stations:
+                employee_ids.append(station_data.employee_id)
+                # print(employee_ids)
+            get_employees_data = db.session.query(Operator_creds).filter(Operator_creds.employee_id.in_(employee_ids)).all()
+            datas = {}
+            if get_employees_data:
+                for employee_data in get_employees_data:
+                #     print(datas)
+                #     datas[station_data.employee_id].append({employee_data.fName, employee_data.lName, employee_data.skill_level})
+                # Ensure a list exists for this employee_id, then extend it
+                    if employee_data.employee_id not in datas:
+                        datas[employee_data.employee_id] = []
+                    datas[employee_data.employee_id].append({
+                        'fName': employee_data.fName,
+                        'lName': employee_data.lName,
+                        'skill_level': employee_data.skill_level
+                    })
+                return jsonify({"Datas":f"{datas}"}), 200
+            else:
+                return jsonify({"Message":"Employess datas does not exist."}), 404
+        else:
+            return jsonify({"Message":"Stations datas does not exist."}), 404
+        return jsonify({'h':'hiiii'})
     except Exception as e:
         db.session.rollback()
         return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422

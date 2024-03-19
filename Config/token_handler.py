@@ -11,7 +11,7 @@ class TokenRequirements:
         payload = {
             'mobile_no': mobile_no,
             'employee_id': employee_id,
-            'exp': datetime.utcnow() + timedelta(hours=5),
+            'exp': datetime.utcnow() + timedelta(minutes=2),
         }
         return jwt.encode(payload, secret_key, algorithm='HS512')
 
