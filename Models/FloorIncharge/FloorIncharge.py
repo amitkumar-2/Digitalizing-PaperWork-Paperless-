@@ -1,8 +1,9 @@
 from flask import request, jsonify, session, current_app
 from Database.init_and_conf import db
-from Database.models import floor_incharge_creds, Operator_creds, parts_info, processes_info, parameters_info, check_sheet_data, stations, work_assigned_to_operator
+from Database.models import floor_incharge_creds, Operator_creds, parts_info, processes_info, parameters_info, check_sheet_data, stations, work_assigned_to_operator, work_assigned_to_operator_logs, check_sheet
 # from handlers import create_tocken
 from Config.token_handler import TokenRequirements
+from datetime import datetime, timedelta
 
 def signup():
     try:
@@ -135,7 +136,7 @@ def update_part(data):
     except Exception as e:
         return jsonify({'Error': f'Block is not able to fetch records {e}'}), 500
 
-def  add_process(data):
+def add_process(data):
     try:
         process_name = data.get('process_name')
         process_no = data.get('process_no')
@@ -217,27 +218,21 @@ def add_checksheet(data):
     try:
         csp_id = data.get('csp_id')
         csp_name = data.get('csp_name')
+        specification = data.get('specification')
+        control_method = data.get('control_method')
+        frequency = data.get('frequency')
+        csp_name_hindi = data.get('csp_name_hindi')
         added_by_owner = data.get('added_by_owner')
         
-        exist_parameter_id = check_sheet_data.query.filter_by(parameter_id=csp_id).first()
+        exist_parameter_id = check_sheet.query.filter_by(csp_id=csp_id).first()
         if exist_parameter_id:
             return  jsonify({"Message": "Parameter has been already added"}), 304
         else:
-            new_parameter = check_sheet_data(parameter_id=csp_id, parameter_name=csp_name, added_by_owner=added_by_owner)
+            new_parameter = check_sheet(csp_id=csp_id, csp_name=csp_name, specification=specification, control_method=control_method, frequency=frequency, csp_name_hindi=csp_name_hindi, added_by_owner=added_by_owner)
             db.session.add(new_parameter)
             db.session.commit()
             return jsonify({"Message": "Data Added Successfully","Id":csp_id,"Name":csp_name}), 201
         
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
-
-def checksheet_add_logs():
-    try:
-        csp_id = request.form['csp_id']
-        oprtr_employee_id = request.form['oprtr_employee_id']
-        flrInchr_employee_id = request.form['flrInchr_employee_id']
-        status_datas = request.form['status_datas']
     except Exception as e:
         db.session.rollback()
         return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
@@ -269,7 +264,7 @@ def stations_info(data):
                 else:
                     stations_dict[prefix] = [station]
                     
-            return jsonify({"totalLines":f"{len(stations_dict)}", "lines":f'{list(stations_dict)}', "All_stations":f'{stations_dict}'}), 200
+            return jsonify({'totalLines':f'{len(stations_dict)}', 'lines':f'{list(stations_dict)}', 'All_stations':f'{stations_dict}'}), 200
         else:
             return jsonify({"Message":"Employess datas does not exist."}), 404
     except Exception as e:
@@ -279,8 +274,8 @@ def stations_info(data):
 
 def stations_current_status():
     try:
-        all_stations_status = db.session.query(work_assigned_to_operator.station_id, work_assigned_to_operator.failed, work_assigned_to_operator.passed, work_assigned_to_operator.filled).all()
-        all_stations_data = [{'station_id': station_id, 'failed': failed, 'passed': passed, 'filled': filled} for station_id, failed, passed, filled in all_stations_status]
+        all_stations_status = db.session.query(work_assigned_to_operator.station_id, work_assigned_to_operator.failed, work_assigned_to_operator.passed, work_assigned_to_operator.filled, work_assigned_to_operator.shift, work_assigned_to_operator.start_shift_time, work_assigned_to_operator.end_shift_time).all()
+        all_stations_data = [{'station_id': station_id, 'failed': failed, 'passed': passed, 'filled': filled, 'shift': shift, 'start_shift_time': str(start_shift_time), 'end_shift_time': str(end_shift_time)} for station_id, failed, passed, filled, shift, start_shift_time, end_shift_time in all_stations_status]
         # print(all_stations_data)
         return jsonify({"all_stations_data": all_stations_data})
     except Exception as e:
@@ -320,6 +315,67 @@ def refresh_data():
         else:
             return jsonify({"Message":"Stations datas does not exist."}), 404
         return jsonify({'h':'hiiii'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
+
+
+def free_stations_if_task_completed(data):
+    try:
+        station_id = data.get('station_id')
+        current_time = datetime.now().time()
+        current_date = datetime.now().date()
+        
+        get_station_data = work_assigned_to_operator.query.filter_by(station_id=station_id).first()
+        if get_station_data.end_shift_time>=current_time and get_station_data.date==current_date:
+            return jsonify({"Message":"Task is running on this station"}), 200
+        elif get_station_data.end_shift_time<current_time or get_station_data.date!=current_date:
+            new_record = work_assigned_to_operator_logs(employee_id = get_station_data.employee_id,
+                    station_id = get_station_data.station_id,
+                    part_no = get_station_data.part_no,
+                    process_no = get_station_data.process_no,
+                    start_shift_time = get_station_data.start_shift_time,
+                    end_shift_time = get_station_data.employee_id,
+                    shift = get_station_data.shift,
+                    # operator_login_status = get_station_data.operator_login_status,
+                    total_assigned_task = get_station_data.total_assigned_task,
+                    left_for_rework = get_station_data.left_for_rework,
+                    passed = get_station_data.passed,
+                    filled = get_station_data.filled,
+                    failed = get_station_data.failed,
+                    assigned_by_owner = get_station_data.assigned_by_owner)
+            db.session.add(new_record)
+            db.session.commit()
+            
+            db.session.delete(get_station_data)
+            db.session.commit()
+            
+            return jsonify({"Message":"Stations is free now"}), 201
+        else:
+            return jsonify({"Message":"Stations has not assigned any task"}), 404
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
+
+
+def get_fpa_history(data):
+    date = data.get('date')
+    line_no = data.get('line_no')
+
+
+def get_last_date_data(data):
+    try:
+        date = datetime.now().date()
+        for count in range(1,28):
+            minus_date = date - timedelta(days=count)
+            find_data_by_date = work_assigned_to_operator_logs.query.filter_by(date=minus_date).all()
+            if find_data_by_date:
+                break
+            else:
+                continue
+        
+            
     except Exception as e:
         db.session.rollback()
         return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422

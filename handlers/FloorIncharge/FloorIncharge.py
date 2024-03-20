@@ -16,7 +16,7 @@ from functools import wraps
 from collections import Counter
 from Database.models import Operator_creds, floor_incharge_creds, work_assigned_to_operator, parts_info, processes_info, parameters_info, check_sheet_data, check_sheet_data_logs
 from Database.init_and_conf import db
-from Models.FloorIncharge.FloorIncharge import login, operator_signup, add_part, get_parts, update_part, add_process, get_processes, add_parameter, add_checksheet, stations_info, stations_current_status, refresh_data
+from Models.FloorIncharge.FloorIncharge import login, operator_signup, add_part, get_parts, update_part, add_process, get_processes, add_parameter, add_checksheet, stations_info, stations_current_status, refresh_data, free_stations_if_task_completed
 from Config.token_handler import TokenRequirements
 
 FloorIncharge1=Blueprint('FloorIncharge', __name__)
@@ -293,3 +293,12 @@ def refresh_data_handler(**kwargs):
     return refresh_data()
 
 ################################################### get FPA history ############################################
+
+
+
+
+############################################### free stations if task is completed ######################################
+@FloorIncharge1.route("/floorincharge/free_station", methods=['POST'])
+@TokenRequirements.token_required
+def free_station(**kwargs):
+    return free_stations_if_task_completed(request.form)

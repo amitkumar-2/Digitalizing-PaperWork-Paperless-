@@ -130,7 +130,8 @@ class stations(db.Model):
     building_no = db.Column(db.String(length=10), nullable=False)
     location = db.Column(db.String(length=25), nullable=False)
     added_by_owner = db.Column(db.String(length=15), nullable=False)
-    added_date = db.Column(db.DateTime, default=datetime.now(pytz.timezone('Asia/Kolkata')))
+    added_time = db.Column(db.Time, default=datetime.now(pytz.timezone('Asia/Kolkata')).time())
+    added_date = db.Column(db.Date, default=datetime.now(pytz.timezone('Asia/Kolkata')).date())
 
 
 ################################# work assigned to operator table ######################################
@@ -150,7 +151,8 @@ class work_assigned_to_operator(db.Model):
     passed = db.Column(db.Integer)
     filled = db.Column(db.Integer)
     failed = db.Column(db.Integer)
-    date_time = db.Column(db.DateTime, default=datetime.now(pytz.timezone('Asia/Kolkata')))
+    time = db.Column(db.Time, default=datetime.now(pytz.timezone('Asia/Kolkata')).time())
+    date = db.Column(db.Date, default=datetime.now(pytz.timezone('Asia/Kolkata')).date())
 
 class work_assigned_to_operator_logs(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -167,7 +169,8 @@ class work_assigned_to_operator_logs(db.Model):
     passed = db.Column(db.Integer)
     filled = db.Column(db.Integer)
     failed = db.Column(db.Integer)
-    date_time = db.Column(db.DateTime, default=datetime.now(pytz.timezone('Asia/Kolkata')))
+    time = db.Column(db.Time, default=datetime.now(pytz.timezone('Asia/Kolkata')).time())
+    date = db.Column(db.Date, default=datetime.now(pytz.timezone('Asia/Kolkata')).date())
 
 
 ##################################### all parts information table #########################################
@@ -176,7 +179,8 @@ class parts_info(db.Model):
     parn_name = db.Column(db.String(length=64), nullable=False)
     part_no = db.Column(db.String(length=20), primary_key=True)
     added_by_owner = db.Column(db.String(30), nullable=False)
-    date_time = db.Column(db.DateTime, default=datetime.now(pytz.timezone('Asia/Kolkata')))
+    time = db.Column(db.Time, default=datetime.now(pytz.timezone('Asia/Kolkata')).time())
+    date = db.Column(db.Date, default=datetime.now(pytz.timezone('Asia/Kolkata')).date())
 
 
 ###################################### all process name information table ##################################
@@ -185,8 +189,10 @@ class  processes_info(db.Model):
     process_name = db.Column(db.String(length=220), nullable=False)
     process_no = db.Column(db.String(length=40), primary_key=True)
     belongs_to_part = db.Column(db.String(length=20), nullable=False)
+    images_urls = db.Column(db.String(length=1200))
     added_by_owner = db.Column(db.String(30), nullable=False)
-    date_time = db.Column(db.DateTime, default=datetime.now(pytz.timezone('Asia/Kolkata')))
+    time = db.Column(db.Time, default=datetime.now(pytz.timezone('Asia/Kolkata')).time())
+    date = db.Column(db.Date, default=datetime.now(pytz.timezone('Asia/Kolkata')).date())
 
 
 #################### all parameters information table or Set Up and First Part Approval######################
@@ -202,7 +208,8 @@ class parameters_info(db.Model):
     FPA_status = db.Column(db.Boolean, default=False)
     readings_is_available = db.Column(db.Boolean, default=False)
     added_by_owner = db.Column(db.String(30), nullable=False)
-    date_time = db.Column(db.DateTime, default=datetime.now(pytz.timezone('Asia/Kolkata')))
+    time = db.Column(db.Time, default=datetime.now(pytz.timezone('Asia/Kolkata')).time())
+    date = db.Column(db.Date, default=datetime.now(pytz.timezone('Asia/Kolkata')).date())
 
 class  fpa_and_set_up_approved_records(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -259,11 +266,25 @@ class  fpa_and_set_up_approved_records_logs(db.Model):
 
 
 ########################################################### Startup check sheet data ######################################################
-class check_sheet_data(db.Model):
+class check_sheet(db.Model):
     csp_id = db.Column(db.String(length=15), primary_key=True)
     csp_name = db.Column(db.String(length=300), nullable=False)
+    csp_name_hindi = db.Column(db.String(length=250))
+    specification = db.Column(db.String(length=300))
+    control_method = db.Column(db.String(length=80))
+    frequency = db.Column(db.String(length=80))
     added_by_owner = db.Column(db.String(length=30), nullable=False)
-    date_time = db.Column(db.DateTime, default=datetime.now(pytz.timezone('Asia/Kolkata')))
+    time = db.Column(db.Time, default=datetime.now(pytz.timezone('Asia/Kolkata')).time())
+    date = db.Column(db.Date, default=datetime.now(pytz.timezone('Asia/Kolkata')).date())
+
+class check_sheet_data(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    csp_id = db.Column(db.String(length=15), nullable=False) # Check Sheet Parameter Id
+    oprtr_employee_id = db.Column(db.String(length=20), nullable=False)  # Operator Employee ID
+    flrInchr_employee_id = db.Column(db.String(length=30))
+    status_datas = db.Column(db.String(length=1500), nullable=False)
+    time = db.Column(db.Time, default=datetime.now(pytz.timezone('Asia/Kolkata')).time())
+    date = db.Column(db.Date, default=datetime.now(pytz.timezone('Asia/Kolkata')).date())
 
 class check_sheet_data_logs(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -271,7 +292,8 @@ class check_sheet_data_logs(db.Model):
     oprtr_employee_id = db.Column(db.String(length=20), nullable=False)  # Operator Employee ID
     flrInchr_employee_id = db.Column(db.String(length=30))
     status_datas = db.Column(db.String(length=1500), nullable=False)
-    date_time = db.Column(db.DateTime, default=datetime.now(pytz.timezone('Asia/Kolkata')))
+    time = db.Column(db.Time, default=datetime.now(pytz.timezone('Asia/Kolkata')).time())
+    date = db.Column(db.Date, default=datetime.now(pytz.timezone('Asia/Kolkata')).date())
 
 
 
@@ -314,4 +336,5 @@ class params_ucl_lcl(db.Model):
     parameter_no = db.Column(db.String(length=60), primary_key=True)
     UCL = db.Column(db.Float)
     LCL = db.Column(db.Float)
-    date_time = db.Column(db.DateTime, default=datetime.now(pytz.timezone('Asia/Kolkata')))
+    time = db.Column(db.Time, default=datetime.now(pytz.timezone('Asia/Kolkata')).time())
+    date = db.Column(db.Date, default=datetime.now(pytz.timezone('Asia/Kolkata')).date())

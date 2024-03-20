@@ -8,6 +8,10 @@ class BaseConfig():
     AWS_SNS_ACCES_KEY = "AKIAWABXIQIDOGW5NT2L"
     AWS_SNS_SECRET_KEY = "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"
     AWS_SNS_REGION = "Global"
+    AWS_S3_ACCESS_KEY = "AKIAWABXIQIDMP3BNRKE"
+    AWS_S3_SECRET_KEY = "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"
+    AWS_S3_BUCKET = 'displayunit'
+    AWS_S3_REGION = 'ap-south-1'
 
 
 class DevConfig(BaseConfig):

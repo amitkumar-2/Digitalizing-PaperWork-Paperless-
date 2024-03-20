@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from functools import wraps
 from Database.models import Operator_creds, floor_incharge_creds, work_assigned_to_operator, fpa_and_set_up_approved_records, reading_params
 from Database.init_and_conf import db
-from Models.Operator.Operator import operator_login, add_work, add_reading
+from Models.Operator.Operator import operator_login, add_work, add_reading, get_task
 
 
 Operator1=Blueprint('Operator', __name__)
@@ -64,7 +64,10 @@ def operator_logout(**kwargs):
     except:
         return jsonify({'Error': 'Block not executing when Logging out'}), 422
 
-
+@Operator1.route('/operator/get_task', methods=['GET', 'POST'])
+@TokenRequirements.token_required
+def get_task_handler(**kwargs):
+    return get_task(request.form)
 
 
 # Check Assigned task By App ID
