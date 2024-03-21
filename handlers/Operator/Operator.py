@@ -44,11 +44,11 @@ def auth(**kwargs):
     return 'JWT is verified. Welcome to your Dashboard!'
 
 
-@Operator1.route('/operator/login', methods=['GET', 'POST'])
+@Operator1.route('/operator/login', methods=['POST'])
 def operator_login_handler():
     return operator_login(request.form)
 
-@Operator1.route('/operator/logout', methods=['GET', 'POST'])
+@Operator1.route('/operator/logout', methods=['POST'])
 @TokenRequirements.token_required
 def operator_logout(**kwargs):
     try:
@@ -64,14 +64,14 @@ def operator_logout(**kwargs):
     except:
         return jsonify({'Error': 'Block not executing when Logging out'}), 422
 
-@Operator1.route('/operator/get_task', methods=['GET', 'POST'])
+@Operator1.route('/operator/get_task', methods=['POST'])
 @TokenRequirements.token_required
 def get_task_handler(**kwargs):
     return get_task(request.form)
 
 
 # Check Assigned task By App ID
-@Operator1.route('/operator/check/task',methods=['GET'])
+@Operator1.route('/operator/check/task',methods=['POST'])
 # @token_required
 def check_assigned_task_by_app_id(**kwargs):
     try:

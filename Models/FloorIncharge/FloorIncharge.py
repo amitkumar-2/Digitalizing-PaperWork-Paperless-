@@ -4,6 +4,9 @@ from Database.models import floor_incharge_creds, Operator_creds, parts_info, pr
 # from handlers import create_tocken
 from Config.token_handler import TokenRequirements
 from datetime import datetime, timedelta
+from Services.AWS_S3 import return_s3_client
+from Config.creds import BaseConfig
+# from os import path
 
 def signup():
     try:
@@ -136,12 +139,16 @@ def update_part(data):
     except Exception as e:
         return jsonify({'Error': f'Block is not able to fetch records {e}'}), 500
 
-def add_process(data):
+def add_process(data, files):
     try:
         process_name = data.get('process_name')
         process_no = data.get('process_no')
         belongs_to_part = data.get('belongs_to_part')
         added_by_owner = data.get('added_by_owner')
+        files = files.getlist('file')
+        
+        s3_client = return_s3_client()
+        
 
         exist_part_no = parts_info.query.filter_by(part_no=belongs_to_part).first()
         if exist_part_no:
@@ -150,7 +157,24 @@ def add_process(data):
                 return jsonify({"Message": "This Process number already exists."})
             
             else:
-                new_process = processes_info(process_name=process_name, process_no=process_no, belongs_to_part=belongs_to_part, added_by_owner=added_by_owner)
+                files_urls = []
+                if files:
+                    for file in files:
+                        file_path = f"{belongs_to_part}/{file.filename}"
+                        print(file_path)
+                        s3_client.upload_fileobj(
+                            file,
+                            BaseConfig.AWS_S3_BUCKET,
+                            file_path)
+
+                        files_urls.append(f'https://{BaseConfig.AWS_S3_BUCKET}.s3.{BaseConfig.AWS_S3_REGION}.amazonaws.com/{file_path}')
+                        urls_str = ', '.join(files_urls)
+                        # print(urls_str)
+                    
+                else:
+                    files_urls = None
+                
+                new_process = processes_info(process_name=process_name, process_no=process_no, belongs_to_part=belongs_to_part, images_urls=urls_str, added_by_owner=added_by_owner)
                 db.session.add(new_process)
                 db.session.commit()
                 return jsonify({"Message": "New Process has been added Successfully.", "ProcessName": f"{process_name}"}),  201

@@ -241,7 +241,7 @@ def update_part_handler():
 @FloorIncharge1.route("/floorincharge/add_process", methods=['POST'])
 # @token_required
 def  add_process_handler():
-    return add_process(request.form)
+    return add_process(request.form, request.files)
 @FloorIncharge1.route("/floorincharge/get_processes", methods=[ 'GET', 'POST'])
 # @token_required
 def get_processes_handler():
