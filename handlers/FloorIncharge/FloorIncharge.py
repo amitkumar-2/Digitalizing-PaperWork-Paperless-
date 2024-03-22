@@ -14,51 +14,52 @@ import handlers
 from datetime import datetime, timedelta
 from functools import wraps
 from collections import Counter
-from Database.models import Operator_creds, floor_incharge_creds, work_assigned_to_operator, parts_info, processes_info, parameters_info, check_sheet_data, check_sheet_data_logs
+from Database.models import Operator_creds, floor_incharge_creds, work_assigned_to_operator, parts_info, processes_info, parameters_info, check_sheet_data, check_sheet_data_logs, work_assigned_to_operator_logs
+import pytz
 from Database.init_and_conf import db
-from Models.FloorIncharge.FloorIncharge import login, operator_signup, add_part, get_parts, update_part, add_process, get_processes, add_parameter, add_checksheet, stations_info, stations_current_status, refresh_data, free_stations_if_task_completed
+from Models.FloorIncharge.FloorIncharge import login, operator_signup, add_part, get_parts, update_part, add_process, get_processes, add_parameter, add_checksheet, stations_info, stations_current_status, refresh_data, free_stations_if_task_completed, disable_part, assign_task
 from Config.token_handler import TokenRequirements
 
 FloorIncharge1=Blueprint('FloorIncharge', __name__)
 
 
 
-def token_required(func):
-    @wraps(func)
-    def decorated(*args, **kwargs):
-        auth_header = request.headers.get('Authorization')
-        if auth_header and auth_header.startswith('Bearer '):
-            token = auth_header.split(" ")[1]
-        else:
-            token = None
-        # token = request.args.get('token')
-        if not token:
-            return jsonify({'Alert!': 'Token is missing!'})
-        try:
-            payload = handlers.is_token_expired(token)
-            # Add the token payload to the kwargs so that it's available to the protected route
-            kwargs['token_payload'] = payload
-            if payload[0] == False:
-                try:
-                    # Call the original function with the token payload
-                    return func(*args, **kwargs)
-                except:
-                    return jsonify({"Error:": "An error occurred while trying to excute the function."})
-            else:
-                return jsonify({'Alert!': 'Token is expired!'})
-        except:
-            return jsonify({'Alert!': 'Invalid Token!'})
+# def token_required(func):
+#     @wraps(func)
+#     def decorated(*args, **kwargs):
+#         auth_header = request.headers.get('Authorization')
+#         if auth_header and auth_header.startswith('Bearer '):
+#             token = auth_header.split(" ")[1]
+#         else:
+#             token = None
+#         # token = request.args.get('token')
+#         if not token:
+#             return jsonify({'Alert!': 'Token is missing!'})
+#         try:
+#             payload = handlers.is_token_expired(token)
+#             # Add the token payload to the kwargs so that it's available to the protected route
+#             kwargs['token_payload'] = payload
+#             if payload[0] == False:
+#                 try:
+#                     # Call the original function with the token payload
+#                     return func(*args, **kwargs)
+#                 except:
+#                     return jsonify({"Error:": "An error occurred while trying to excute the function."})
+#             else:
+#                 return jsonify({'Alert!': 'Token is expired!'})
+#         except:
+#             return jsonify({'Alert!': 'Invalid Token!'})
         
         
     
-    return decorated
+#     return decorated
 
 @FloorIncharge1.route('/public')
 def public():
     return 'For Public FloorIncharge'
 
 @FloorIncharge1.route('/auth')
-@token_required
+@TokenRequirements.token_required
 def auth(**kwargs):
     return 'JWT is verified. Welcome to your Dashboard!'
 # def auth(**kwargs):
@@ -118,13 +119,13 @@ def signup():
 
 
 @FloorIncharge1.route("/floorincharge/login", methods=['POST'])
-def login_handler():
+def login_handler(**kwargs):
     return login(request.form)
 
 
 
 @FloorIncharge1.route("/generate_token")
-def generate_token():
+def generate_token(**kwargs):
     # Generate the token using your create_token function
     token_response = handlers.create_tocken(employee_id="example_user", mobile_no=123)
 
@@ -144,7 +145,7 @@ def generate_token():
     return expired_token
 
 @FloorIncharge1.route("/floorincharge")
-def FloorIncharge():
+def FloorIncharge(**kwargs):
     return "<h1>This is home page</h1>"
 
 
@@ -156,7 +157,7 @@ def operator_signup_handler():
 
 # Floor-Incharge Dashboard all Data API
 @FloorIncharge1.route("/floorincharge/dashboard")
-@token_required
+@TokenRequirements.token_required
 def dashboard(**kwargs):
     try:
         """Returns a JSON object containing all the data for floor-incharge dashboard"""
@@ -191,78 +192,56 @@ def dashboard(**kwargs):
 
 ############ assign task to stations one by one using this api ###########################
 @FloorIncharge1.route("/floorincharge/assign_task", methods=['POST'])
-# @token_required
-def assign_task():
-    try:
-        # username = kwargs["token_payload"][1]['username']
-        station_id = request.form['station_id']
-        employee_id = request.form['employee_id']
-        part_no = request.form['part_no']
-        process_no = request.form['process_no']
-        start_shift_time = request.form['start_shift_time']
-        end_shift_time = request.form['end_shift_time']
-        shift = request.form['shift']
-        assigned_by_owner = request.form['assigned_by_owner']
-        
-        total_assigned_task = request.form['total_assigned_task']
-
-        # date = datetime.now().date()
-        station = work_assigned_to_operator.query.filter_by(station_id=station_id).first()
-        if station:
-            return jsonify({'Response': 'Please reset the all task first'})
-        else:
-            ####################### this data will retrieve from privious date in work_assigned_to_operator_logs table#################
-            left_for_rework = 0
-            assign_task_obj = work_assigned_to_operator(employee_id=employee_id, station_id=station_id, part_no=part_no, process_no=process_no, start_shift_time=start_shift_time, end_shift_time=end_shift_time, shift=shift, assigned_by_owner=assigned_by_owner, total_assigned_task=total_assigned_task, left_for_rework=left_for_rework)
-            db.session.add(assign_task_obj)
-            db.session.commit()
-            return jsonify({'Response:': "Task assigned successfully to station!"})
-        
-    except Exception as e:
-        return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
+@TokenRequirements.token_required
+def assign_task_handler(**kwargs):
+    return assign_task(request.form)
 
 
 ######################################## add the parts with their information ###########################################
 @FloorIncharge1.route("/floorincharge/add_part", methods=['POST'])
-# @token_required
-def add_part_handler():
+@TokenRequirements.token_required
+def add_part_handler(**kwargs):
     return add_part(request.form)
 @FloorIncharge1.route("/floorincharge/get_parts", methods=[ 'GET'])
 @TokenRequirements.token_required
 def get_parts_handler(**kwargs):
     return get_parts()
 @FloorIncharge1.route("/floorincharge/update_part", methods=[ 'GET', 'POST'])
-# @token_required
-def update_part_handler():
+@TokenRequirements.token_required
+def update_part_handler(**kwargs):
     return update_part(request.form)
+@FloorIncharge1.route("/floorincharge/disable_part", methods=['POST'])
+@TokenRequirements.token_required
+def disable_part_handler(**kwargs):
+    return disable_part(request.form)
 
 
 ########################################## add the process with their information ##########################################
 @FloorIncharge1.route("/floorincharge/add_process", methods=['POST'])
-# @token_required
-def  add_process_handler():
+@TokenRequirements.token_required
+def  add_process_handler(**kwargs):
     return add_process(request.form, request.files)
 @FloorIncharge1.route("/floorincharge/get_processes", methods=[ 'GET', 'POST'])
-# @token_required
-def get_processes_handler():
+@TokenRequirements.token_required
+def get_processes_handler(**kwargs):
     return get_processes(request.form)
 
 
 ######################################## add the parameters of processes with their information ###############################
 @FloorIncharge1.route("/floorincharge/add_parameter", methods=['POST'])
-# @token_required
-def add_parameter_handler():
+@TokenRequirements.token_required
+def add_parameter_handler(**kwargs):
     return add_parameter(request.form)
 
 
 #################################################### check sheet with all information and logs  ##############################
 @FloorIncharge1.route("/floorincharge/add_checksheet", methods=['POST'])
-# @token_required
-def add_checksheet_handler():
+@TokenRequirements.token_required
+def add_checksheet_handler(**kwargs):
     return add_checksheet(request.form)
 @FloorIncharge1.route("/floorincharge/checksheet/add_logs", methods=['POST'])
-# @token_required
-def checksheet_add_logs():
+@TokenRequirements.token_required
+def checksheet_add_logs(**kwargs):
     try:
         csp_id = request.form['csp_id']
         oprtr_employee_id = request.form['oprtr_employee_id']

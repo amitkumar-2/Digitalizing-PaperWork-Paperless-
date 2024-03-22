@@ -1,4 +1,5 @@
 from flask import request, jsonify, session, current_app
+import pytz
 from Database.init_and_conf import db
 from Database.models import floor_incharge_creds, Operator_creds, parts_info, processes_info, parameters_info, check_sheet_data, stations, work_assigned_to_operator, work_assigned_to_operator_logs, check_sheet
 # from handlers import create_tocken
@@ -50,7 +51,7 @@ def login(data):
             if user.password == password:
                 session['logged_in'] = True
                 token = TokenRequirements.create_token(employee_id=user.employee_id, mobile_no=user.mobile, secret_key=current_app.config['SECRET_KEY'])
-                return jsonify({'Response:': 'Floor_Incharge login successfull!', 'token': f'{token}', 'fName':f'{user.fName}', 'lName':f'{user.lName}', 'building_no': f'{user.building_no}', 'floor_no': f'{user.floor_no}'}), 200
+                return jsonify({'Response:': 'Floor_Incharge login successfull!', 'token': f'{token}', 'employee_id':f'{user.employee_id}', 'fName':f'{user.fName}', 'lName':f'{user.lName}', 'building_no': f'{user.building_no}', 'floor_no': f'{user.floor_no}'}), 200
             else:
                 return jsonify({'Response:': 'Authentication Failed!'}), 401
         else:
@@ -94,8 +95,8 @@ def operator_signup(data):
 
 def add_part(data):
     try:
-        parn_name = data.get('parn_name')
-        part_no = data.get('part_no')
+        parn_name = data.get('part_name')
+        part_no = data.get('part_id')
         added_by_owner = data.get('added_by_owner')
 
         exist_part_no = parts_info.query.filter_by(part_no=part_no).first()
@@ -137,12 +138,35 @@ def update_part(data):
         else:
             return jsonify({"Message":"No part is available"}), 404
     except Exception as e:
+        db.session.rollback()
         return jsonify({'Error': f'Block is not able to fetch records {e}'}), 500
+
+def disable_part(data):
+    try:
+        part_no=data.get('part_no')
+        disabled = data.get('disabled')
+        get_part = parts_info.query.filter_by(part_no=part_no).first()
+        if get_part:
+            if get_part.disabled==1:
+                return jsonify({"Message": "Part is already disabled"}), 200
+
+            if disabled == "true" or disabled == "1":
+                get_part.disabled = True
+                db.session.commit()
+                return jsonify({"Message":"Part has been Disabled Successfully"}),200
+            else:
+                return jsonify({"Message": "Invalid value for 'disabled' parameter"}), 400
+        else:
+            return jsonify({"Message": "Part not found"}), 404
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
+
 
 def add_process(data, files):
     try:
         process_name = data.get('process_name')
-        process_no = data.get('process_no')
+        process_no = data.get('process_id')
         belongs_to_part = data.get('belongs_to_part')
         added_by_owner = data.get('added_by_owner')
         files = files.getlist('file')
@@ -207,6 +231,56 @@ def get_processes(data):
     except Exception as e:
         return jsonify({'Error': f'Block is not able to fetch records {e}'}), 500
 
+def update_processes(data):
+    try:
+        process_name = data.get('process_name')
+        process_no = data.get('process_no')
+        belongs_to_part = data.get('belongs_to_part')
+        added_by_owner = data.get('added_by_owner')
+        files = files.getlist('file')
+        
+        s3_client = return_s3_client()
+        
+
+        exist_part_no = parts_info.query.filter_by(part_no=belongs_to_part).first()
+        if exist_part_no:
+            exist_process_no = processes_info.query.filter_by(process_no=process_no).first()
+            if exist_process_no:
+                # return jsonify({"Message": "This Process number already exists."})
+                files_urls = []
+                if files:
+                    for file in files:
+                        file_path = f"{belongs_to_part}/{file.filename}"
+                        print(file_path)
+                        s3_client.upload_fileobj(
+                            file,
+                            BaseConfig.AWS_S3_BUCKET,
+                            file_path)
+
+                        files_urls.append(f'https://{BaseConfig.AWS_S3_BUCKET}.s3.{BaseConfig.AWS_S3_REGION}.amazonaws.com/{file_path}')
+                        urls_str = ', '.join(files_urls)
+                        # print(urls_str)
+                    
+                else:
+                    files_urls = None
+                
+                exist_process_no.process_name = process_name
+                exist_process_no.belongs_to_part = belongs_to_part
+                exist_process_no.added_by_owner = added_by_owner
+                exist_process_no.images_urls = urls_str
+                db.session.commit()
+                return jsonify({"Message": "Process has been updated Successfully.", "ProcessName": f"{process_name}"}),  200
+            
+            else:
+                return jsonify({"Message": "Process does not exist."}), 404
+        else:
+            return jsonify({"Message":"Part does not exist."}), 404
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'Error': f'Block is not able to fetch records {e}'}), 422
+
+
 def add_parameter(data):
     try:
         parameter_name = data.get('parameter_name')
@@ -218,6 +292,7 @@ def add_parameter(data):
         max = data.get('max')
         unit = data.get('unit')
         FPA_status = data.get('FPA_status')
+        readings_is_available = data.get('readings_is_available')
         
         exist_process_no = processes_info.query.filter_by(process_no=process_no).first()
         
@@ -261,6 +336,39 @@ def add_checksheet(data):
         db.session.rollback()
         return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
 
+def assign_task():
+    try:
+        # username = kwargs["token_payload"][1]['username']
+        station_id = request.form['station_id']
+        employee_id = request.form['employee_id']
+        part_no = request.form['part_no']
+        process_no = request.form['process_no']
+        start_shift_time = request.form['start_shift_time']
+        end_shift_time = request.form['end_shift_time']
+        shift = request.form['shift']
+        assigned_by_owner = request.form['assigned_by_owner']
+        total_assigned_task = request.form['total_assigned_task']
+        
+        current_time = datetime.now(pytz.timezone('Asia/Kolkata')).time()
+        current_date = datetime.now(pytz.timezone('Asia/Kolkata')).date()
+
+        # date = datetime.now().date()
+        station = work_assigned_to_operator.query.filter_by(station_id=station_id).first()
+        if station:
+            if station.end_shift_time>=current_time and station.date==current_date:
+                return jsonify({"Message":"Task is running on this station"}), 200
+            elif station.end_shift_time<current_time or station.date!=current_date:
+                return jsonify({'Message': 'Please reset the all task first'}), 200
+        else:
+            ####################### this data will retrieve from privious date in work_assigned_to_operator_logs table#################
+            left_for_rework = 0
+            assign_task_obj = work_assigned_to_operator(employee_id=employee_id, station_id=station_id, part_no=part_no, process_no=process_no, start_shift_time=start_shift_time, end_shift_time=end_shift_time, shift=shift, assigned_by_owner=assigned_by_owner, total_assigned_task=total_assigned_task, left_for_rework=left_for_rework)
+            db.session.add(assign_task_obj)
+            db.session.commit()
+            return jsonify({'Message:': "Task assigned successfully to station!"}), 200
+        
+    except Exception as e:
+        return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
 
 def stations_info(data):
     try:
@@ -351,30 +459,33 @@ def free_stations_if_task_completed(data):
         current_date = datetime.now().date()
         
         get_station_data = work_assigned_to_operator.query.filter_by(station_id=station_id).first()
-        if get_station_data.end_shift_time>=current_time and get_station_data.date==current_date:
-            return jsonify({"Message":"Task is running on this station"}), 200
-        elif get_station_data.end_shift_time<current_time or get_station_data.date!=current_date:
-            new_record = work_assigned_to_operator_logs(employee_id = get_station_data.employee_id,
-                    station_id = get_station_data.station_id,
-                    part_no = get_station_data.part_no,
-                    process_no = get_station_data.process_no,
-                    start_shift_time = get_station_data.start_shift_time,
-                    end_shift_time = get_station_data.employee_id,
-                    shift = get_station_data.shift,
-                    # operator_login_status = get_station_data.operator_login_status,
-                    total_assigned_task = get_station_data.total_assigned_task,
-                    left_for_rework = get_station_data.left_for_rework,
-                    passed = get_station_data.passed,
-                    filled = get_station_data.filled,
-                    failed = get_station_data.failed,
-                    assigned_by_owner = get_station_data.assigned_by_owner)
-            db.session.add(new_record)
-            db.session.commit()
-            
-            db.session.delete(get_station_data)
-            db.session.commit()
-            
-            return jsonify({"Message":"Stations is free now"}), 201
+        if get_station_data:
+            if get_station_data.end_shift_time>=current_time and get_station_data.date==current_date:
+                return jsonify({"Message":"Task is running on this station"}), 200
+            elif get_station_data.end_shift_time<current_time or get_station_data.date!=current_date:
+                new_record = work_assigned_to_operator_logs(employee_id = get_station_data.employee_id,
+                        station_id = get_station_data.station_id,
+                        part_no = get_station_data.part_no,
+                        process_no = get_station_data.process_no,
+                        start_shift_time = get_station_data.start_shift_time,
+                        end_shift_time = get_station_data.employee_id,
+                        shift = get_station_data.shift,
+                        # operator_login_status = get_station_data.operator_login_status,
+                        total_assigned_task = get_station_data.total_assigned_task,
+                        left_for_rework = get_station_data.left_for_rework,
+                        passed = get_station_data.passed,
+                        filled = get_station_data.filled,
+                        failed = get_station_data.failed,
+                        assigned_by_owner = get_station_data.assigned_by_owner)
+                db.session.add(new_record)
+                db.session.commit()
+                
+                db.session.delete(get_station_data)
+                db.session.commit()
+                
+                return jsonify({"Message":"Stations is free now"}), 201
+            else:
+                return jsonify({"Message":"Stations has not assigned any task"}), 404
         else:
             return jsonify({"Message":"Stations has not assigned any task"}), 404
         

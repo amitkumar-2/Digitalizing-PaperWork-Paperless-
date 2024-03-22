@@ -4,6 +4,7 @@ from Database.models import Operator_creds, fpa_and_set_up_approved_records, rea
 from Database.init_and_conf import db
 from datetime import datetime
 from Config.token_handler import TokenRequirements
+import pytz
 
 def operator_login(data):
     try:
@@ -29,39 +30,45 @@ def operator_login(data):
 def get_task(data):
     try:
         station_id = data.get('station_id')
-        shift = data.get('shift')
-        date = datetime.now().date()
-        get_task_data = work_assigned_to_operator.query.filter_by(station_id=station_id, date=date, shift=shift).first()
-        if get_task_data:
-            assigned_process = get_task_data.process_no
-            print(assigned_process)
-            get_process_data = processes_info.query.filter_by(process_no=assigned_process).first()
-            images_urls = get_process_data.images_urls
-            
-            get_parameters = parameters_info.query.filter_by(process_no=assigned_process).all()
-            process_params_info = []
-            for process_param in get_parameters:
-                # parameter_no = process_param.parameter_no
-                one_param_data = {"parameter_no": process_param.parameter_no, "parameter_name": process_param.parameter_name, "process_no": process_param.process_no, "belongs_to_part": process_param.belongs_to_part, "min": process_param.min,"max": process_param.max, "unit": process_param.unit, "FPA_status": process_param.FPA_status, "readings_is_available": process_param.readings_is_available}
-                # parameter_name = process_param.parameter_name
-                # process_no = process_param.process_no
-                # belongs_to_part = process_param.belongs_to_part
-                # min = process_param.min
-                # max = process_param.max
-                # unit = process_param.unit
-                # FPA_status = process_param.FPA_status
-                # readings_is_available = process_param.readings_is_available
-                # if parameter_no not in process_params_info:
-                #     process_params_info[parameter_no] = []
-                # process_params_info[parameter_no].extend(one_param_data)
-                process_params_info.append(one_param_data)
-            
-            check_sheet_entity_datas = db.session.query(check_sheet.csp_id, check_sheet.csp_name, check_sheet.csp_name_hindi, check_sheet.specification, check_sheet.control_method, check_sheet.frequency).all()
-            check_sheet_datas = [{'csp_id': csp_id, 'csp_name': csp_name, 'csp_name_hindi': csp_name_hindi, 'specification': specification, 'control_method': control_method, 'frequency': frequency} for csp_id, csp_name, csp_name_hindi, specification, control_method, frequency in check_sheet_entity_datas]
-            
-            return jsonify({"urls":images_urls, "check_sheet_datas":check_sheet_datas, "total_check_sheet_params": len(check_sheet_datas), "process_params_info":process_params_info}), 200
+        current_time = datetime.now(pytz.timezone('Asia/Kolkata')).time()
+        date = datetime.now(pytz.timezone('Asia/Kolkata')).date()
+        get_task_data = work_assigned_to_operator.query.filter_by(station_id=station_id).first()
+        if  get_task_data:
+            if get_task_data.date==date:
+                if get_task_data.end_shift_time>=current_time:
+                    assigned_process = get_task_data.process_no
+                    print(assigned_process)
+                    get_process_data = processes_info.query.filter_by(process_no=assigned_process).first()
+                    images_urls = get_process_data.images_urls
+                    
+                    get_parameters = parameters_info.query.filter_by(process_no=assigned_process).all()
+                    process_params_info = []
+                    for process_param in get_parameters:
+                        # parameter_no = process_param.parameter_no
+                        one_param_data = {"parameter_no": process_param.parameter_no, "parameter_name": process_param.parameter_name, "process_no": process_param.process_no, "belongs_to_part": process_param.belongs_to_part, "min": process_param.min,"max": process_param.max, "unit": process_param.unit, "FPA_status": process_param.FPA_status, "readings_is_available": process_param.readings_is_available}
+                        # parameter_name = process_param.parameter_name
+                        # process_no = process_param.process_no
+                        # belongs_to_part = process_param.belongs_to_part
+                        # min = process_param.min
+                        # max = process_param.max
+                        # unit = process_param.unit
+                        # FPA_status = process_param.FPA_status
+                        # readings_is_available = process_param.readings_is_available
+                        # if parameter_no not in process_params_info:
+                        #     process_params_info[parameter_no] = []
+                        # process_params_info[parameter_no].extend(one_param_data)
+                        process_params_info.append(one_param_data)
+                    
+                    check_sheet_entity_datas = db.session.query(check_sheet.csp_id, check_sheet.csp_name, check_sheet.csp_name_hindi, check_sheet.specification, check_sheet.control_method, check_sheet.frequency).all()
+                    check_sheet_datas = [{'csp_id': csp_id, 'csp_name': csp_name, 'csp_name_hindi': csp_name_hindi, 'specification': specification, 'control_method': control_method, 'frequency': frequency} for csp_id, csp_name, csp_name_hindi, specification, control_method, frequency in check_sheet_entity_datas]
+                    
+                    return jsonify({"urls":images_urls, "check_sheet_datas":check_sheet_datas, "total_check_sheet_params": len(check_sheet_datas), "process_params_info":process_params_info}), 200
+                else:
+                    return jsonify({"Message":"no task assigned to this station at current shift..."}), 404
+            else:
+                return jsonify({"Message":"no task assigned to this station today..."}), 404
         else:
-            return jsonify({"Message":"no task assigned to this station today..."}), 404
+            return jsonify({"Message":"This station never assigned any task or doesn't exist..."}), 404
     except Exception as e:
         # db.session.rollback()
         return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422

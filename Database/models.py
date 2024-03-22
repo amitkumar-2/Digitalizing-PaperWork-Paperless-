@@ -137,7 +137,7 @@ class stations(db.Model):
 ################################# work assigned to operator table ######################################
 class work_assigned_to_operator(db.Model):
     # id = db.Column(db.Integer, autoincrement=True)
-    employee_id = db.Column(db.String(length=20), nullable=False)
+    employee_id = db.Column(db.String(length=20), nullable=False, unique=True)
     station_id = db.Column(db.String(length=15), primary_key=True, nullable=False)
     part_no = db.Column(db.String(length=20), nullable=False)
     process_no = db.Column(db.String(length=20), nullable=False, unique=True)
@@ -156,8 +156,8 @@ class work_assigned_to_operator(db.Model):
 
 class work_assigned_to_operator_logs(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    employee_id = db.Column(db.String(length=20), nullable=False)
-    station_id = db.Column(db.String(length=15), nullable=False)
+    employee_id = db.Column(db.String(length=20), nullable=False, index=True)
+    station_id = db.Column(db.String(length=15), nullable=False, index=True)
     part_no = db.Column(db.String(length=20), nullable=False)
     process_no = db.Column(db.String(length=20), nullable=False)
     start_shift_time = db.Column(db.Time, nullable=False)
@@ -179,8 +179,9 @@ class parts_info(db.Model):
     parn_name = db.Column(db.String(length=64), nullable=False)
     part_no = db.Column(db.String(length=20), primary_key=True)
     added_by_owner = db.Column(db.String(30), nullable=False)
-    time = db.Column(db.Time, default=datetime.now(pytz.timezone('Asia/Kolkata')).time())
-    date = db.Column(db.Date, default=datetime.now(pytz.timezone('Asia/Kolkata')).date())
+    disabled = db.Column(db.Boolean, default=False)
+    time = db.Column(db.Time, default=datetime.now().time())
+    date = db.Column(db.Date, default=datetime.now().date())
 
 
 ###################################### all process name information table ##################################
@@ -267,7 +268,7 @@ class  fpa_and_set_up_approved_records_logs(db.Model):
 
 ########################################################### Startup check sheet data ######################################################
 class check_sheet(db.Model):
-    csp_id = db.Column(db.String(length=15), primary_key=True)
+    csp_id = db.Column(db.Integer, primary_key=True)
     csp_name = db.Column(db.String(length=300), nullable=False)
     csp_name_hindi = db.Column(db.String(length=250))
     specification = db.Column(db.String(length=300))
@@ -278,9 +279,10 @@ class check_sheet(db.Model):
     date = db.Column(db.Date, default=datetime.now(pytz.timezone('Asia/Kolkata')).date())
 
 class check_sheet_data(db.Model):
-    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    csp_id = db.Column(db.String(length=15), nullable=False) # Check Sheet Parameter Id
-    oprtr_employee_id = db.Column(db.String(length=20), nullable=False)  # Operator Employee ID
+    # id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    # csp_id = db.Column(db.String(length=15), nullable=False) # Check Sheet Parameter Id
+    station_id = db.Column(db.String(length=15), primary_key=True)
+    oprtr_employee_id = db.Column(db.String(length=20), unique=True)  # Operator Employee ID
     flrInchr_employee_id = db.Column(db.String(length=30))
     status_datas = db.Column(db.String(length=1500), nullable=False)
     time = db.Column(db.Time, default=datetime.now(pytz.timezone('Asia/Kolkata')).time())
@@ -288,8 +290,9 @@ class check_sheet_data(db.Model):
 
 class check_sheet_data_logs(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    csp_id = db.Column(db.String(length=15), nullable=False) # Check Sheet Parameter Id
-    oprtr_employee_id = db.Column(db.String(length=20), nullable=False)  # Operator Employee ID
+    # csp_id = db.Column(db.String(length=15), nullable=False) # Check Sheet Parameter Id
+    station_id = db.Column(db.String(length=15), nullable=False, index=True)
+    oprtr_employee_id = db.Column(db.String(length=20), nullable=False, index=True)  # Operator Employee ID
     flrInchr_employee_id = db.Column(db.String(length=30))
     status_datas = db.Column(db.String(length=1500), nullable=False)
     time = db.Column(db.Time, default=datetime.now(pytz.timezone('Asia/Kolkata')).time())
