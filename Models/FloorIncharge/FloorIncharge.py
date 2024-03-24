@@ -96,7 +96,11 @@ def operator_signup(data):
 def add_part(data):
     try:
         parn_name = data.get('part_name')
+        if len(parn_name) <= 0:
+            return  jsonify({"error":"Part name cannot be empty"}),406
         part_no = data.get('part_id')
+        if len(part_no) <= 0:
+            return  jsonify({"error":"Part no cannot be empty"}),406
         added_by_owner = data.get('added_by_owner')
 
         exist_part_no = parts_info.query.filter_by(part_no=part_no).first()
@@ -120,7 +124,7 @@ def get_parts():
         #     part_name = data[i].part_name
         #     part_no = data[i].part_no
         parts_data = [{'part_name': part_name, 'part_no': part_no} for part_name, part_no in data]
-        return jsonify({"data: ": parts_data}), 200
+        return jsonify({"data": parts_data}), 200
     except Exception as e:
         return jsonify({'Error': f'Block is not able to fetch records {e}'}), 500
 
@@ -166,12 +170,20 @@ def disable_part(data):
 def add_process(data, files):
     try:
         process_name = data.get('process_name')
+        if len(process_name) <= 0:
+            return  jsonify({"error":"Part name cannot be empty"}),406
         process_no = data.get('process_id')
+        if len(process_no) <= 0:
+            return  jsonify({"error":"Part name cannot be empty"}),406
         belongs_to_part = data.get('belongs_to_part')
+        if len(belongs_to_part) <= 0:
+            return  jsonify({"error":"Part name cannot be empty"}),406
         added_by_owner = data.get('added_by_owner')
+        if len(added_by_owner) <= 0:
+            return  jsonify({"error":"Part name cannot be empty"}),406
         files = files.getlist('file')
         
-        s3_client = return_s3_client()
+        # s3_client = return_s3_client()
         
 
         exist_part_no = parts_info.query.filter_by(part_no=belongs_to_part).first()
@@ -181,24 +193,25 @@ def add_process(data, files):
                 return jsonify({"Message": "This Process number already exists."})
             
             else:
-                files_urls = []
-                if files:
-                    for file in files:
-                        file_path = f"{belongs_to_part}/{file.filename}"
-                        print(file_path)
-                        s3_client.upload_fileobj(
-                            file,
-                            BaseConfig.AWS_S3_BUCKET,
-                            file_path)
+                # files_urls = []
+                # if files:
+                #     for file in files:
+                #         file_path = f"{belongs_to_part}/{file.filename}"
+                #         print(file_path)
+                #         s3_client.upload_fileobj(
+                #             file,
+                #             BaseConfig.AWS_S3_BUCKET,
+                #             file_path)
 
-                        files_urls.append(f'https://{BaseConfig.AWS_S3_BUCKET}.s3.{BaseConfig.AWS_S3_REGION}.amazonaws.com/{file_path}')
-                        urls_str = ', '.join(files_urls)
-                        # print(urls_str)
+                #         files_urls.append(f'https://{BaseConfig.AWS_S3_BUCKET}.s3.{BaseConfig.AWS_S3_REGION}.amazonaws.com/{file_path}')
+                #         urls_str = ', '.join(files_urls)
+                #         # print(urls_str)
                     
-                else:
-                    files_urls = None
+                # else:
+                #     files_urls = None
                 
-                new_process = processes_info(process_name=process_name, process_no=process_no, belongs_to_part=belongs_to_part, images_urls=urls_str, added_by_owner=added_by_owner)
+                # new_process = processes_info(process_name=process_name, process_no=process_no, belongs_to_part=belongs_to_part, images_urls=urls_str, added_by_owner=added_by_owner)
+                new_process = processes_info(process_name=process_name, process_no=process_no, belongs_to_part=belongs_to_part, added_by_owner=added_by_owner)
                 db.session.add(new_process)
                 db.session.commit()
                 return jsonify({"Message": "New Process has been added Successfully.", "ProcessName": f"{process_name}"}),  201
@@ -291,8 +304,12 @@ def add_parameter(data):
         min = data.get('min')
         max = data.get('max')
         unit = data.get('unit')
+        
         FPA_status = data.get('FPA_status')
+        FPA_status = bool(FPA_status)
+        
         readings_is_available = data.get('readings_is_available')
+        readings_is_available = bool(readings_is_available)
         
         exist_process_no = processes_info.query.filter_by(process_no=process_no).first()
         
@@ -302,7 +319,7 @@ def add_parameter(data):
                 return jsonify({"Message": "This Parameters number already exists."}), 200
             
             else:
-                new_process = processes_info(parameter_name=parameter_name, parameter_no=parameter_no, process_no=process_no, belongs_to_part=belongs_to_part, min=min, max=max, unit=unit, FPA_status=FPA_status, added_by_owner=added_by_owner)
+                new_process = parameters_info(parameter_name=parameter_name, parameter_no=parameter_no, process_no=process_no, belongs_to_part=belongs_to_part, min=min, max=max, unit=unit, FPA_status=FPA_status, added_by_owner=added_by_owner)
                 db.session.add(new_process)
                 db.session.commit()
                 return jsonify({"Message": "New Process has been added Successfully.", "ProcessName": f"{parameter_name}"}),  201
