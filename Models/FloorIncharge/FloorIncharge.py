@@ -330,6 +330,58 @@ def add_parameter(data):
         db.session.rollback()
         return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
 
+def get_parameter(data):
+    """Returns list of available parameters for process"""
+    try:
+        part_no = data.get('part_no')
+        process_no=data.get('process_no')
+        exist_part = parts_info.query.filter_by(part_no=part_no).first()
+        if exist_part:
+            exist_processes = processes_info.query.filter_by(process_no=process_no).first()
+            if exist_processes:
+                exist_parameters=parameters_info.query.filter_by(process_no=process_no).all()
+                if exist_parameters:
+                    print(exist_parameters[0].parameter_name)
+                    parameters_data = [
+                        {'parameter_name': parameters.parameter_name, 'parameter_no': parameters.parameter_no, 'min':parameters.min, 'max':parameters.max, 'unit':parameters.unit, 'FPA_status':parameters.FPA_status, 'readings_is_available':parameters.readings_is_available}
+                        for parameters in exist_parameters]
+                # print(process_data)
+                    return jsonify({"data: ": parameters_data}), 200
+                else:
+                    return jsonify({'Message': 'No parameters  available for this part and process'}), 404
+            else:
+                return jsonify({'Message': 'No processs  available for this part'}), 404
+        else:
+            return jsonify( {'Message':'No such Part Found.'} ), 404
+    except Exception as e:
+        return jsonify({'Error': f'Block is not able to fetch records {e}'}), 422
+
+def update_parameter(data):
+    try:
+        parameter_no = data.get('parameter_no')
+        parameter_name = data.get('parameter_name')
+        min = data.get('min')
+        max = data.get('max')
+        unit= data.get('unit')
+        FPA_status = data.get('FPA_status')
+        readings_is_available = data.get('readings_is_available')
+        exist_parameter=parameters_info.query.filter_by(parameter_no=parameter_no).one()
+        if exist_parameter:
+            exist_parameter.parameter_name = parameter_name
+            exist_parameter.min = min
+            exist_parameter.max = max
+            exist_parameter.unit = unit
+            exist_parameter.FPA_status = FPA_status
+            exist_parameter.readings_is_available = readings_is_available
+            db.session.commit()
+            return jsonify({"Message": "Parameter has been updated Successfully.", "ProcessName": f"{parameter_name}"}), 200
+        else:
+            return  jsonify({'Message':'Parameter does not exists'}) , 404
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'Error': f'Block is not able to fetch records {e}'}), 422
+
+
 def add_checksheet(data):
     try:
         csp_id = data.get('csp_id')

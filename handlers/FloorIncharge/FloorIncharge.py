@@ -17,7 +17,7 @@ from collections import Counter
 from Database.models import Operator_creds, floor_incharge_creds, work_assigned_to_operator, parts_info, processes_info, parameters_info, check_sheet_data, check_sheet_data_logs, work_assigned_to_operator_logs
 import pytz
 from Database.init_and_conf import db
-from Models.FloorIncharge.FloorIncharge import login, operator_signup, add_part, get_parts, update_part, add_process, get_processes, add_parameter, add_checksheet, stations_info, stations_current_status, refresh_data, free_stations_if_task_completed, disable_part, assign_task
+from Models.FloorIncharge.FloorIncharge import login, operator_signup, add_part, get_parts, update_part, add_process, get_processes, add_parameter, add_checksheet, stations_info, stations_current_status, refresh_data, free_stations_if_task_completed, disable_part, assign_task, update_processes, update_parameter, get_parameter
 from Config.token_handler import TokenRequirements
 
 FloorIncharge1=Blueprint('FloorIncharge', __name__)
@@ -226,12 +226,27 @@ def  add_process_handler(**kwargs):
 def get_processes_handler(**kwargs):
     return get_processes(request.form)
 
+@FloorIncharge1.route("/floorincharge/update_processes", methods=[ 'GET', 'POST'])
+@TokenRequirements.token_required
+def update_processes_handler(**kwargs):
+    return update_processes(request.form)
+
 
 ######################################## add the parameters of processes with their information ###############################
 @FloorIncharge1.route("/floorincharge/add_parameter", methods=['POST'])
 @TokenRequirements.token_required
 def add_parameter_handler(**kwargs):
     return add_parameter(request.form)
+
+@FloorIncharge1.route("/floorincharge/get_parameter", methods=['POST'])
+@TokenRequirements.token_required
+def get_parameter_handler(**kwargs):
+    return get_parameter(request.form)
+
+@FloorIncharge1.route("/floorincharge/update_parameter", methods=['POST'])
+@TokenRequirements.token_required
+def update_parameter_handler(**kwargs):
+    return update_parameter(request.form)
 
 
 #################################################### check sheet with all information and logs  ##############################
