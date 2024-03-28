@@ -95,8 +95,8 @@ def operator_signup(data):
 
 def add_part(data):
     try:
-        parn_name = data.get('part_name')
-        if len(parn_name) <= 0:
+        part_name = data.get('part_name')
+        if len(part_name) <= 0:
             return  jsonify({"error":"Part name cannot be empty"}),406
         part_no = data.get('part_id')
         if len(part_no) <= 0:
@@ -107,10 +107,10 @@ def add_part(data):
         if exist_part_no:
             return jsonify({"Message": "This Part Number already exists."}), 200
         else:
-            new_parts = parts_info(part_name=parn_name, part_no=part_no, added_by_owner=added_by_owner)
+            new_parts = parts_info(part_name=part_name, part_no=part_no, added_by_owner=added_by_owner)
             db.session.add(new_parts)
             db.session.commit()
-            return jsonify({"Message": "New Part has been added Successfully.", "ParName": f"{parn_name}"}),  201
+            return jsonify({"Message": "New Part has been added Successfully.", "ParName": f"{part_name}"}),  201
     except Exception as e:
         db.session.rollback()
         return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
@@ -405,38 +405,47 @@ def add_checksheet(data):
         db.session.rollback()
         return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
 
-def assign_task():
+def assign_task(data):
     try:
-        # username = kwargs["token_payload"][1]['username']
-        station_id = request.form['station_id']
-        employee_id = request.form['employee_id']
-        part_no = request.form['part_no']
-        process_no = request.form['process_no']
-        start_shift_time = request.form['start_shift_time']
-        end_shift_time = request.form['end_shift_time']
-        shift = request.form['shift']
-        assigned_by_owner = request.form['assigned_by_owner']
-        total_assigned_task = request.form['total_assigned_task']
-        
         current_time = datetime.now(pytz.timezone('Asia/Kolkata')).time()
         current_date = datetime.now(pytz.timezone('Asia/Kolkata')).date()
+        assigned_task_stations = {}
+        running_task_stations = {}
+        # username = kwargs["token_payload"][1]['username']
+        for stationTask in data:
+            station_id = stationTask.get('station_id')
+            print(station_id)
+            employee_id = stationTask.get('employee_id')
+            part_no = stationTask.get('part_no')
+            process_no = stationTask.get('process_no')
+            start_shift_time = stationTask.get('start_shift_time')
+            end_shift_time = stationTask.get('end_shift_time')
+            shift = stationTask.get('shift')
+            assigned_by_owner = stationTask.get('assigned_by_owner')
+            total_assigned_task = stationTask.get('total_assigned_task')
 
-        # date = datetime.now().date()
-        station = work_assigned_to_operator.query.filter_by(station_id=station_id).first()
-        if station:
-            if station.end_shift_time>=current_time and station.date==current_date:
-                return jsonify({"Message":"Task is running on this station"}), 200
-            elif station.end_shift_time<current_time or station.date!=current_date:
-                return jsonify({'Message': 'Please reset the all task first'}), 200
-        else:
-            ####################### this data will retrieve from privious date in work_assigned_to_operator_logs table#################
-            left_for_rework = 0
-            assign_task_obj = work_assigned_to_operator(employee_id=employee_id, station_id=station_id, part_no=part_no, process_no=process_no, start_shift_time=start_shift_time, end_shift_time=end_shift_time, shift=shift, assigned_by_owner=assigned_by_owner, total_assigned_task=total_assigned_task, left_for_rework=left_for_rework)
-            db.session.add(assign_task_obj)
-            db.session.commit()
-            return jsonify({'Message:': "Task assigned successfully to station!"}), 200
+            # date = datetime.now().date()
+            station = work_assigned_to_operator.query.filter_by(station_id=station_id).first()
+            if station:
+                if station.end_shift_time>=current_time and station.date==current_date:
+                    running_task_stations[station_id] = "Task is running on this station"
+                    # return jsonify({"Message":"Task is running on this station"}), 200
+                elif station.end_shift_time<current_time or station.date!=current_date:
+                    # response[station_id] = "Please reset the all task first on this station"
+                    db.session.rollback()
+                    return jsonify({'Message': 'Please reset the all task first'}), 200
+            else:
+                ####################### this data will retrieve from privious date in work_assigned_to_operator_logs table#################
+                left_for_rework = 0
+                assign_task_obj = work_assigned_to_operator(employee_id=employee_id, station_id=station_id, part_no=part_no, process_no=process_no, start_shift_time=start_shift_time, end_shift_time=end_shift_time, shift=shift, assigned_by_owner=assigned_by_owner, total_assigned_task=total_assigned_task, left_for_rework=left_for_rework)
+                db.session.add(assign_task_obj)
+                db.session.commit()
+                # return jsonify({'Message:': "Task assigned successfully to station!"}), 200
+                assigned_task_stations[station_id] = "Task assigned successfully to station"
+        return jsonify({'assigned task to': assigned_task_stations, 'running task to stations': running_task_stations}), 200
         
     except Exception as e:
+        db.session.rollback()
         return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
 
 def stations_info(data):
@@ -566,10 +575,17 @@ def get_notification_info(data):
     try:
         floor_no = data.get("floor_no")
         all_notifications = notify_to_incharge.query.filter_by(floor_no=floor_no).all()
+        all_csp_datas = db.session.query(check_sheet).all()
         notifications = []
         for notification in all_notifications:
+            csp_id = notification.csp_id
+            for csp_data in all_csp_datas:
+                if csp_data.csp_id == csp_id:
+                    csp_name = csp_data.csp_name
+                
             notifications.append({
                 "station_id": notification.station_id,
+                "csp_name": csp_name,
                 "csp_id": notification.csp_id,
                 "created_at": str(notification.created_at)
             })

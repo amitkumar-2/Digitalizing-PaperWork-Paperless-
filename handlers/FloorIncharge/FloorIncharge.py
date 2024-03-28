@@ -192,9 +192,9 @@ def dashboard(**kwargs):
 
 ############ assign task to stations one by one using this api ###########################
 @FloorIncharge1.route("/floorincharge/assign_task", methods=['POST'])
-@TokenRequirements.token_required
+# @TokenRequirements.token_required
 def assign_task_handler(**kwargs):
-    return assign_task(request.form)
+    return assign_task(request.json)
 
 
 ######################################## add the parts with their information ###########################################
