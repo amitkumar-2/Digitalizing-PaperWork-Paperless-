@@ -1,6 +1,6 @@
 from flask import request, session, jsonify, current_app
 from collections import Counter
-from Database.models import Operator_creds, fpa_and_set_up_approved_records, reading_params, stations, work_assigned_to_operator, processes_info, parameters_info, check_sheet
+from Database.models import Operator_creds, fpa_and_set_up_approved_records, reading_params, stations, work_assigned_to_operator, processes_info, parameters_info, check_sheet, notify_to_incharge
 from Database.init_and_conf import db
 from datetime import datetime
 from Config.token_handler import TokenRequirements
@@ -186,6 +186,22 @@ def update_work_status(data):
             return jsonify({"Message":"Part has been updated Successfully"}),200
         else:
             return jsonify({"Message":"No part is available"}), 404
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
+
+
+def notify_to_incharge_func(data):
+    try:
+        station_id = data.get("station_id")
+        csp_id = data.get("csp_id")
+        floor_no = data.get("floor_no")
+        date_and_time = datetime.now()
+        
+        add_notification = notify_to_incharge(station_id=station_id, csp_id=csp_id, floor_no=floor_no, created_at=date_and_time)
+        db.session.add(add_notification)
+        db.session.commit()
+        return jsonify({"Message":f"Notification sent to in-charge for Station ID :{station_id}"}), 200
     except Exception as e:
         db.session.rollback()
         return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422

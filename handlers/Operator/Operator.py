@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from functools import wraps
 from Database.models import Operator_creds, floor_incharge_creds, work_assigned_to_operator, fpa_and_set_up_approved_records, reading_params
 from Database.init_and_conf import db
-from Models.Operator.Operator import operator_login, add_work, add_reading, get_task
+from Models.Operator.Operator import operator_login, add_work, add_reading, get_task, notify_to_incharge_func
 
 
 Operator1=Blueprint('Operator', __name__)
@@ -108,3 +108,9 @@ def add_work_handler():
 # @token_required
 def add_reading_handler():
     return add_reading(request.form)
+
+
+@Operator1.route("/operator/notify", methods=["POST"])
+# @token_required
+def notify_to_incharge_func_handler(**kwargs):
+    return notify_to_incharge_func(request.form)

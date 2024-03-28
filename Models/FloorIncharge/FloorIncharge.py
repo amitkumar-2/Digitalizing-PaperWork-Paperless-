@@ -1,7 +1,7 @@
 from flask import request, jsonify, session, current_app
 import pytz
 from Database.init_and_conf import db
-from Database.models import floor_incharge_creds, Operator_creds, parts_info, processes_info, parameters_info, check_sheet_data, stations, work_assigned_to_operator, work_assigned_to_operator_logs, check_sheet
+from Database.models import floor_incharge_creds, Operator_creds, parts_info, processes_info, parameters_info, check_sheet_data, stations, work_assigned_to_operator, work_assigned_to_operator_logs, check_sheet, notify_to_incharge
 # from handlers import create_tocken
 from Config.token_handler import TokenRequirements
 from datetime import datetime, timedelta
@@ -107,7 +107,7 @@ def add_part(data):
         if exist_part_no:
             return jsonify({"Message": "This Part Number already exists."}), 200
         else:
-            new_parts = parts_info(parn_name=parn_name, part_no=part_no, added_by_owner=added_by_owner)
+            new_parts = parts_info(part_name=parn_name, part_no=part_no, added_by_owner=added_by_owner)
             db.session.add(new_parts)
             db.session.commit()
             return jsonify({"Message": "New Part has been added Successfully.", "ParName": f"{parn_name}"}),  201
@@ -118,12 +118,12 @@ def add_part(data):
 def get_parts():
     """Returns list of available parts"""
     try:
-        data=db.session.query(parts_info.part_no, parts_info.parn_name).all()
+        data=db.session.query(parts_info.part_no, parts_info.part_name).all()
         # print(len(data))
         # for i in range(len(data)):
         #     part_name = data[i].part_name
         #     part_no = data[i].part_no
-        parts_data = [{'part_name': part_name, 'part_no': part_no} for part_name, part_no in data]
+        parts_data = [{'part_name': part_name, 'part_no': part_no} for part_no, part_name in data]
         return jsonify({"data": parts_data}), 200
     except Exception as e:
         return jsonify({'Error': f'Block is not able to fetch records {e}'}), 500
@@ -133,7 +133,7 @@ def update_part(data):
         part_no = data.get('part_no')
         get_part = parts_info.query.filter_by(part_no=part_no).first()
         if get_part:
-            get_part.parn_name = data.get('parn_name') or get_part.parn_name
+            get_part.part_name = data.get('parn_name') or get_part.part_name
             get_part.part_no = data.get('part_no') or get_part.part_no
             get_part.added_by_owner = data.get('added_by_owner') or get_part.added_by_owner
             
@@ -236,7 +236,7 @@ def get_processes(data):
                     for process in processes
                 ]
                 # print(process_data)
-                return jsonify({"data: ": process_data}), 200
+                return jsonify({"data": process_data}), 200
             else:
                 return jsonify({'Message': 'No processes available for this part'}), 404
         else:
@@ -562,6 +562,27 @@ def free_stations_if_task_completed(data):
         db.session.rollback()
         return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
 
+def get_notification_info(data):
+    try:
+        floor_no = data.get("floor_no")
+        all_notifications = notify_to_incharge.query.filter_by(floor_no=floor_no).all()
+        notifications = []
+        for notification in all_notifications:
+            notifications.append({
+                "station_id": notification.station_id,
+                "csp_id": notification.csp_id,
+                "created_at": str(notification.created_at)
+            })
+            
+        if len(notifications) > 0:
+            return jsonify( {"Notifications": notifications} ), 200
+        else:
+            return jsonify({"Message": "No Notifications Found"}), 404
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
+        
 
 def get_fpa_history(data):
     date = data.get('date')

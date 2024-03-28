@@ -176,7 +176,7 @@ class work_assigned_to_operator_logs(db.Model):
 ##################################### all parts information table #########################################
 class parts_info(db.Model):
     # id = db.Column(db.Integer, autoincrement=True)
-    parn_name = db.Column(db.String(length=64), nullable=False)
+    part_name = db.Column(db.String(length=64), nullable=False)
     part_no = db.Column(db.String(length=20), primary_key=True)
     added_by_owner = db.Column(db.String(30), nullable=False)
     disabled = db.Column(db.Boolean, default=False)
@@ -341,3 +341,12 @@ class params_ucl_lcl(db.Model):
     LCL = db.Column(db.Float)
     time = db.Column(db.Time, default=datetime.now(pytz.timezone('Asia/Kolkata')).time())
     date = db.Column(db.Date, default=datetime.now(pytz.timezone('Asia/Kolkata')).date())
+
+
+
+######################################## operator check params notification table ####################################
+class  notify_to_incharge(db.Model):
+    station_id = db.Column(db.String(length=25), primary_key=True)
+    csp_id = db.Column(db.Integer, primary_key=True)
+    floor_no = db.Column(db.String(length=15), nullable=False)
+    created_at = db.Column(db.DateTime)
