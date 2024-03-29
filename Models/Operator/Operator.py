@@ -1,6 +1,6 @@
 from flask import request, session, jsonify, current_app
 from collections import Counter
-from Database.models import Operator_creds, fpa_and_set_up_approved_records, reading_params, stations, work_assigned_to_operator, processes_info, parameters_info, check_sheet, notify_to_incharge
+from Database.models import Operator_creds, fpa_and_set_up_approved_records, reading_params, stations, work_assigned_to_operator, processes_info, parameters_info, check_sheet, notify_to_incharge, check_sheet_data
 from Database.init_and_conf import db
 from datetime import datetime
 from Config.token_handler import TokenRequirements
@@ -62,7 +62,13 @@ def get_task(data):
                     check_sheet_entity_datas = db.session.query(check_sheet.csp_id, check_sheet.csp_name, check_sheet.csp_name_hindi, check_sheet.specification, check_sheet.control_method, check_sheet.frequency).all()
                     check_sheet_datas = [{'csp_id': csp_id, 'csp_name': csp_name, 'csp_name_hindi': csp_name_hindi, 'specification': specification, 'control_method': control_method, 'frequency': frequency} for csp_id, csp_name, csp_name_hindi, specification, control_method, frequency in check_sheet_entity_datas]
                     
-                    return jsonify({"urls":images_urls, "check_sheet_datas":check_sheet_datas, "total_check_sheet_params": len(check_sheet_datas), "process_params_info":process_params_info}), 200
+                    check_sheet_status_for_operator = check_sheet_data.query.filter_by(station_id=station_id).first()
+                    if check_sheet_status_for_operator:
+                        check_sheet_fill_status = True
+                    else:
+                        check_sheet_fill_status = False
+                    
+                    return jsonify({"urls":images_urls, "check_sheet_datas":check_sheet_datas, "total_check_sheet_params": len(check_sheet_datas), "process_params_info":process_params_info, "check_sheet_fill_status":check_sheet_fill_status}), 200
                 else:
                     return jsonify({"Message":"no task assigned to this station at current shift..."}), 404
             else:
@@ -74,12 +80,17 @@ def get_task(data):
         return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
 
 
-def checksheet_add_logs():
+def checksheet_add_logs(data):
     try:
-        csp_id = request.form['csp_id']
-        oprtr_employee_id = request.form['oprtr_employee_id']
-        flrInchr_employee_id = request.form['flrInchr_employee_id']
-        status_datas = request.form['status_datas']
+        csp_id = data.get('csp_id')
+        oprtr_employee_id = data.get('oprtr_employee_id')
+        flrInchr_employee_id = data.get('flrInchr_employee_id')
+        status_datas = data.get('status_datas')
+        
+        add_checksheet_data = check_sheet_data(csp_id=csp_id, oprtr_employee_id=oprtr_employee_id, flrInchr_employee_id=flrInchr_employee_id, status_datas=status_datas)
+        db.session.add(add_checksheet_data)
+        db.session.commit()
+        return jsonify({"Message": "Check sheet data submited successfully"}), 200
     except Exception as e:
         db.session.rollback()
         return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
