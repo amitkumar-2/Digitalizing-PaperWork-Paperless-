@@ -68,7 +68,13 @@ def get_task(data):
                     else:
                         check_sheet_fill_status = False
                     
-                    return jsonify({"urls":images_urls, "check_sheet_datas":check_sheet_datas, "total_check_sheet_params": len(check_sheet_datas), "process_params_info":process_params_info, "check_sheet_fill_status":check_sheet_fill_status}), 200
+                    get_readings_data = reading_params.query.filter_by(station_id=station_id, date=date).first()
+                    if get_readings_data:
+                        station_reading_data = {'reading_1': get_readings_data.reading_1, 'reading_2': get_readings_data.reading_2, 'reading_3': get_readings_data.reading_3, 'reading_4': get_readings_data.reading_4, 'reading_5': get_readings_data.reading_5}
+                    else:
+                        station_reading_data = "No Data Found"
+                    
+                    return jsonify({"urls":images_urls, "check_sheet_datas":check_sheet_datas, "total_check_sheet_params": len(check_sheet_datas), "process_params_info":process_params_info, "check_sheet_fill_status":check_sheet_fill_status, "station_reading_data": station_reading_data}), 200
                 else:
                     return jsonify({"Message":"no task assigned to this station at current shift..."}), 404
             else:
@@ -140,7 +146,7 @@ def add_work(data):
 
 def add_reading(data):
     try:
-        operator_employee_id = data.get('operator_employee_id')
+        station_id = data.get('station_id')
         parameter_no = data.get('parameter_no')
         # operator_employee_id = data.get['operator_employee_id']
         date = datetime.now().date()
@@ -168,7 +174,7 @@ def add_reading(data):
                 return jsonify({"Message": "No reading were necessary to update"}), 200
         else:
             new_reading = reading_params(
-                operator_employee_id=operator_employee_id,
+                station_id=station_id,
                 parameter_no=parameter_no,
                 reading_1=data.get('reading_1', ''),
                 reading_1_time=datetime.now().time() if data.get('reading_1') else None,
@@ -216,3 +222,53 @@ def notify_to_incharge_func(data):
     except Exception as e:
         db.session.rollback()
         return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
+
+
+# def check_fpa_status(data):
+#     try:
+#         station_id = data.get("station_id")
+#         part_no = data.get("part_no")
+#         shift = data.get("shift")
+#         # date_and_time = datetime.now()
+        
+#         add_notification = fpa_and_set_up_approved_records.query.filter_by(station_id=station_id, part_no=part_no, shift=shift).first()
+#         db.session.add(add_notification)
+#         db.session.commit()
+#         return jsonify({"Message":f"Notification sent to in-charge for Station ID :{station_id}"}), 200
+#     except Exception as e:
+#         db.session.rollback()
+#         return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
+
+
+
+def check_fpa_status(data):
+    try:
+        station_id=data.get('station_id')
+        # Fetch all station_ids for the given floor_no
+        is_not_approved = False
+        station_data = work_assigned_to_operator.query.filter_by(station_id=station_id).first()
+        if station_data:
+            if (station_data.check_fpa_status_at + 2) < station_data.passed:
+                station_data.check_fpa_status_at = station_data.passed
+                db.session.commit()
+            else:
+                pass
+            
+            fpa_status_data = work_assigned_to_operator.query.filter_by(station_id=station_id).first()
+            if (fpa_status_data.check_fpa_status_at+2) <= fpa_status_data.passed:
+                is_not_approved = True
+            elif (fpa_status_data.check_fpa_status_at+2) >= fpa_status_data.passed:
+                fpa_status_data.passed = data.get('passed') or fpa_status_data.passed
+                fpa_status_data.failed = data.get('failed') or fpa_status_data.failed
+                
+                db.session.commit()
+                return jsonify({"Message": "FPA Status updated Successfully"}), 201
+            # else:
+            #     return jsonify({"Message":"Part has been updated Successfully"}),200
+            
+            return jsonify({" For this station_id is_approved value is":is_not_approved}),200
+        else:
+            return jsonify({"Message": "No stations found for the station_id."}), 404
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'Error': f'Failed to fetch data: {e}'}), 500

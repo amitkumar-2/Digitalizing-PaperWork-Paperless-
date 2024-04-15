@@ -147,7 +147,7 @@ class work_assigned_to_operator(db.Model):
     assigned_by_owner = db.Column(db.String(30), nullable=False)
     operator_login_status = db.Column(db.Boolean, default=False)  # True means the operator is logged in
     total_assigned_task = db.Column(db.Integer, nullable=False)
-    left_for_rework = db.Column(db.Integer)
+    check_fpa_status_at = db.Column(db.Integer)
     passed = db.Column(db.Integer)
     filled = db.Column(db.Integer)
     failed = db.Column(db.Integer)
@@ -165,7 +165,7 @@ class work_assigned_to_operator_logs(db.Model):
     shift = db.Column(db.String(length=2), nullable=False)
     assigned_by_owner = db.Column(db.String(30), nullable=False)
     total_assigned_task = db.Column(db.Integer, nullable=False)
-    left_for_rework = db.Column(db.Integer)
+    check_fpa_status_at = db.Column(db.Integer)
     passed = db.Column(db.Integer)
     filled = db.Column(db.Integer)
     failed = db.Column(db.Integer)
@@ -281,10 +281,10 @@ class check_sheet(db.Model):
 class check_sheet_data(db.Model):
     # id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     # csp_id = db.Column(db.String(length=15), nullable=False) # Check Sheet Parameter Id
-    station_id = db.Column(db.String(length=15), primary_key=True)
-    oprtr_employee_id = db.Column(db.String(length=20), unique=True)  # Operator Employee ID
+    station_id = db.Column(db.String(length=25), unique=True, primary_key=True)
+    oprtr_employee_id = db.Column(db.String(length=20), unique=True, nullable=True)  # Operator Employee ID
     flrInchr_employee_id = db.Column(db.String(length=30))
-    status_datas = db.Column(db.String(length=1500), nullable=False)
+    status_datas = db.Column(db.String(length=1500))
     time = db.Column(db.Time, default=datetime.now(pytz.timezone('Asia/Kolkata')).time())
     date = db.Column(db.Date, default=datetime.now(pytz.timezone('Asia/Kolkata')).date())
 
@@ -294,7 +294,7 @@ class check_sheet_data_logs(db.Model):
     station_id = db.Column(db.String(length=15), nullable=False, index=True)
     oprtr_employee_id = db.Column(db.String(length=20), nullable=False, index=True)  # Operator Employee ID
     flrInchr_employee_id = db.Column(db.String(length=30))
-    status_datas = db.Column(db.String(length=1500), nullable=False)
+    status_datas = db.Column(db.String(length=1500))
     time = db.Column(db.Time, default=datetime.now(pytz.timezone('Asia/Kolkata')).time())
     date = db.Column(db.Date, default=datetime.now(pytz.timezone('Asia/Kolkata')).date())
 
@@ -313,7 +313,7 @@ class reading_params(db.Model):
     reading_4_time = db.Column(db.Time)
     reading_5 = db.Column(db.String(length=10))
     reading_5_time = db.Column(db.Time)
-    operator_employee_id = db.Column(db.String(length=20), nullable=False)
+    station_id = db.Column(db.String(length=20), nullable=False)
     date = db.Column(db.Date, default=datetime.now(pytz.timezone('Asia/Kolkata')).date())
 
 class reading_params_logs(db.Model):
@@ -329,7 +329,7 @@ class reading_params_logs(db.Model):
     reading_4_time = db.Column(db.Time, nullable=False)
     reading_5 = db.Column(db.String(length=10), nullable=False)
     reading_5_time = db.Column(db.Time, nullable=False)
-    operator_employee_id = db.Column(db.String(length=20), nullable=False)
+    station_id = db.Column(db.String(length=20), nullable=False)
     date = db.Column(db.Date, default=datetime.now(pytz.timezone('Asia/Kolkata')).date())
 
 

@@ -1,7 +1,7 @@
 from flask import request, jsonify, session, current_app
 import pytz
 from Database.init_and_conf import db
-from Database.models import floor_incharge_creds, Operator_creds, parts_info, processes_info, parameters_info, check_sheet_data, stations, work_assigned_to_operator, work_assigned_to_operator_logs, check_sheet, notify_to_incharge
+from Database.models import floor_incharge_creds, Operator_creds, parts_info, processes_info, parameters_info, check_sheet_data, stations, work_assigned_to_operator, work_assigned_to_operator_logs, check_sheet, notify_to_incharge, check_sheet_data_logs
 # from handlers import create_tocken
 from Config.token_handler import TokenRequirements
 from datetime import datetime, timedelta
@@ -436,8 +436,7 @@ def assign_task(data):
                     return jsonify({'Message': 'Please reset the all task first'}), 200
             else:
                 ####################### this data will retrieve from privious date in work_assigned_to_operator_logs table#################
-                left_for_rework = 0
-                assign_task_obj = work_assigned_to_operator(employee_id=employee_id, station_id=station_id, part_no=part_no, process_no=process_no, start_shift_time=start_shift_time, end_shift_time=end_shift_time, shift=shift, assigned_by_owner=assigned_by_owner, total_assigned_task=total_assigned_task, left_for_rework=left_for_rework)
+                assign_task_obj = work_assigned_to_operator(employee_id=employee_id, station_id=station_id, part_no=part_no, process_no=process_no, start_shift_time=start_shift_time, end_shift_time=end_shift_time, shift=shift, assigned_by_owner=assigned_by_owner, total_assigned_task=total_assigned_task)
                 db.session.add(assign_task_obj)
                 db.session.commit()
                 # return jsonify({'Message:': "Task assigned successfully to station!"}), 200
@@ -493,38 +492,48 @@ def stations_current_status():
         return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
 
 
-def refresh_data():
+def refresh_data(data):
     try:
-        station_ids = ['G01 F01 L04 S03', 'G01 F01 L04 S02', 'G01 F01 L04 S05']
+        stations_ids = data.get("stations_ids", [])
         
         # Querying the database for records where the station_id matches any in the list
-        matched_stations = db.session.query(work_assigned_to_operator).filter(work_assigned_to_operator.station_id.in_(station_ids)).all()
-        # print(matched_stations[0].employee_id)
+        matched_stations = db.session.query(work_assigned_to_operator).filter(work_assigned_to_operator.station_id.in_(stations_ids)).all()
+
         if matched_stations:
+            employee_to_station_map = {}
             employee_ids = []
+
+            datas = {}
+
+            # Collect employee_ids and map them to station_ids
             for station_data in matched_stations:
                 employee_ids.append(station_data.employee_id)
-                # print(employee_ids)
+                employee_to_station_map[station_data.employee_id] = station_data.station_id
+
             get_employees_data = db.session.query(Operator_creds).filter(Operator_creds.employee_id.in_(employee_ids)).all()
-            datas = {}
+
             if get_employees_data:
                 for employee_data in get_employees_data:
-                #     print(datas)
-                #     datas[station_data.employee_id].append({employee_data.fName, employee_data.lName, employee_data.skill_level})
-                # Ensure a list exists for this employee_id, then extend it
-                    if employee_data.employee_id not in datas:
-                        datas[employee_data.employee_id] = []
-                    datas[employee_data.employee_id].append({
+                    # Get the station_id corresponding to the employee_id
+                    station_id = employee_to_station_map[employee_data.employee_id]
+                    
+                    employee_info = {
                         'fName': employee_data.fName,
                         'lName': employee_data.lName,
-                        'skill_level': employee_data.skill_level
-                    })
-                return jsonify({"Datas":f"{datas}"}), 200
+                        'skill_level': employee_data.skill_level,
+                        'parts_no': matched_stations[employee_ids.index(employee_data.employee_id)].part_no,  # Get part_no from matched_stations
+                        'process_no': matched_stations[employee_ids.index(employee_data.employee_id)].process_no  # Get process_no from matched_stations
+                    }
+                    if station_id not in datas:
+                        datas[station_id] = []
+                    datas[station_id].append(employee_info)
+                    # datas[station_id]['employees'].append(employee_info)
+
+                return jsonify({"Datas": datas}), 200
             else:
-                return jsonify({"Message":"Employess datas does not exist."}), 404
+                return jsonify({"Message": "Employees data does not exist."}), 404
         else:
-            return jsonify({"Message":"Stations datas does not exist."}), 404
-        return jsonify({'h':'hiiii'})
+            return jsonify({"Message": "Stations data does not exist."}), 404
     except Exception as e:
         db.session.rollback()
         return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
@@ -532,40 +541,69 @@ def refresh_data():
 
 def free_stations_if_task_completed(data):
     try:
-        station_id = data.get('station_id')
+        stations_ids = data.get("stations_ids", [])
+        # station_id = data.get('station_id')
         current_time = datetime.now().time()
         current_date = datetime.now().date()
         
-        get_station_data = work_assigned_to_operator.query.filter_by(station_id=station_id).first()
-        if get_station_data:
-            if get_station_data.end_shift_time>=current_time and get_station_data.date==current_date:
-                return jsonify({"Message":"Task is running on this station"}), 200
-            elif get_station_data.end_shift_time<current_time or get_station_data.date!=current_date:
-                new_record = work_assigned_to_operator_logs(employee_id = get_station_data.employee_id,
-                        station_id = get_station_data.station_id,
-                        part_no = get_station_data.part_no,
-                        process_no = get_station_data.process_no,
-                        start_shift_time = get_station_data.start_shift_time,
-                        end_shift_time = get_station_data.employee_id,
-                        shift = get_station_data.shift,
-                        # operator_login_status = get_station_data.operator_login_status,
-                        total_assigned_task = get_station_data.total_assigned_task,
-                        left_for_rework = get_station_data.left_for_rework,
-                        passed = get_station_data.passed,
-                        filled = get_station_data.filled,
-                        failed = get_station_data.failed,
-                        assigned_by_owner = get_station_data.assigned_by_owner)
-                db.session.add(new_record)
-                db.session.commit()
+        task_running_on_stations = []
+        free_stations = []
+        stations_not_any_task = []
+        
+        for station_id in stations_ids:
+            get_station_data = work_assigned_to_operator.query.filter_by(station_id=station_id).first()
+            get_station_check_sheet_data = check_sheet_data.query.filter_by(station_id=station_id).first()
+            if get_station_data:
+                if get_station_data.end_shift_time>=current_time and get_station_data.date==current_date:
+                    task_running_on_stations.append(get_station_data.station_id)
+                elif get_station_data.end_shift_time<current_time or get_station_data.date!=current_date:
+                    new_record = work_assigned_to_operator_logs(employee_id = get_station_data.employee_id,
+                            station_id = get_station_data.station_id,
+                            part_no = get_station_data.part_no,
+                            process_no = get_station_data.process_no,
+                            start_shift_time = get_station_data.start_shift_time,
+                            end_shift_time = get_station_data.end_shift_time,
+                            shift = get_station_data.shift,
+                            # operator_login_status = get_station_data.operator_login_status,
+                            total_assigned_task = get_station_data.total_assigned_task,
+                            check_fpa_status_at = get_station_data.check_fpa_status_at,
+                            passed = get_station_data.passed,
+                            filled = get_station_data.filled,
+                            failed = get_station_data.failed,
+                            assigned_by_owner = get_station_data.assigned_by_owner)
+                    try:
+                        new_check_sheet_record = check_sheet_data_logs(station_id=get_station_check_sheet_data.station_id,
+                                                                    oprtr_employee_id=get_station_check_sheet_data.oprtr_employee_id,
+                                                                    flrInchr_employee_id=get_station_check_sheet_data.flrInchr_employee_id,
+                                                                    status_datas=get_station_check_sheet_data.status_datas)
+                    except:
+                        new_check_sheet_record = check_sheet_data_logs(station_id=get_station_data.station_id,
+                                                                    oprtr_employee_id=get_station_data.employee_id,
+                                                                    flrInchr_employee_id=get_station_data.assigned_by_owner,
+                                                                    status_datas="Checksheet Not Filled")
+                    db.session.add(new_check_sheet_record)
+                    db.session.commit()
+
+                    db.session.add(new_record)
+                    db.session.commit()
+                    
+                    if get_station_check_sheet_data:
+                        db.session.delete(get_station_check_sheet_data)
+                        db.session.commit()
+                    else:
+                        pass
+                    
+                    db.session.delete(get_station_data)
+                    db.session.commit()
                 
-                db.session.delete(get_station_data)
-                db.session.commit()
-                
-                return jsonify({"Message":"Stations is free now"}), 201
+                    free_stations.append(get_station_data.station_id)
+                else:
+                    # return jsonify({"Message":"Stations has not assigned any task"}), 404
+                    pass
             else:
-                return jsonify({"Message":"Stations has not assigned any task"}), 404
-        else:
-            return jsonify({"Message":"Stations has not assigned any task"}), 404
+                # return jsonify({"Message":"Stations has not assigned any task"}), 404
+                pass    
+        return jsonify({"task_running_on_stations": task_running_on_stations, "free_stations": free_stations}), 200
         
     except Exception as e:
         db.session.rollback()
@@ -620,3 +658,86 @@ def get_last_date_data(data):
     except Exception as e:
         db.session.rollback()
         return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
+
+
+
+
+def get_floor_data(data):
+    try:
+        floor_no = data.get('floor_no')
+        # building, floor = floor_no.split(' ')
+        all_lines_stations=[]
+
+        # Fetch all station_ids for the given floor_no
+        current_lines_data = stations.query.filter_by(floor_no=floor_no).all()
+        print(current_lines_data)
+        if current_lines_data:
+            for entity in range(0, len(current_lines_data)):
+                all_lines_stations.append(current_lines_data[entity].station_id)
+            # all_duplicates = dict(Counter(all_stations))
+            all_lines_stations.sort()
+            # Create a dictionary to store the results
+            stations_dict = {}
+            
+            all_stations = [entity.station_id for entity in current_lines_data]
+            print(all_stations)
+
+            # Create a dictionary to store the results
+            result = {} 
+            operator_data = {}
+            for station in all_lines_stations:
+                prefix = station.rsplit(' S', 1)[0]
+                # Add the station to the list associated with the prefix in the dictionary
+                if prefix in stations_dict:
+                    stations_dict[prefix].append(station)
+                else:
+                    stations_dict[prefix] = [station]
+
+            # Iterate over each station_id and fetch data from work_operator table
+            for station_id in all_stations:
+                
+                operator_data = work_assigned_to_operator.query.filter_by(station_id=station_id).all()
+                print(operator_data)
+                if operator_data:
+                    station_result = []
+                    for op in operator_data:
+                        employee_data = Operator_creds.query.filter_by(employee_id=op.employee_id).first()
+                        if employee_data:
+                            station_result.append({
+                                'station_id': op.station_id,
+                                'part_no': op.part_no,
+                                'process_no': op.process_no,
+                                'employee_id': op.employee_id,
+                                'total_assigned_task': op.total_assigned_task,
+                                'employee_name': employee_data.fName,
+                                'employee_skill_level': employee_data.skill_level
+                            })
+                    result[station_id] = station_result
+                else:
+                    result[station_id]=[]
+            
+            parts = db.session.query(parts_info.part_no, parts_info.part_name).all()
+
+# Fetch process info based on part_no
+            parts_data = []
+            for part_no, part_name in parts:
+                process_info = db.session.query(processes_info.process_no, processes_info.process_name).filter_by(belongs_to_part=part_no).all()
+
+    # Format process info and add part_no
+                process_data = [{'process_no': process_no, 'process_name': process_name}
+                    for process_no, process_name in process_info]
+
+                parts_data.append({'part_name': part_name, 'part_no': part_no, 'process_data': process_data})
+            
+            employee_data = db.session.query(Operator_creds.employee_id, Operator_creds.fName, Operator_creds.mName, Operator_creds.lName , Operator_creds.skill_level).all()
+
+            formatted_employee_data = [{'employee_id': employee_id, 'employee_name': f"{fName} {mName} {lName}", 'skill_level':skill_level} for employee_id, fName, mName, lName, skill_level in employee_data]
+
+                # ######################process skill add hogi abhi ########################################
+
+            return jsonify({"station_data":result,"parts_data":parts_data,'totalLines':f'{len(stations_dict)}', 'lines':f'{list(stations_dict)}', 'All_stations':f'{stations_dict}' , 'formatted_employee_data':formatted_employee_data}), 200
+        else:
+            return jsonify({"Message": "No stations found for the given floor_no."}), 404
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'Error': f'Failed to fetch data: {e}'}), 500
