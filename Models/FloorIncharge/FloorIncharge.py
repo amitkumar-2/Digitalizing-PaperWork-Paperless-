@@ -87,11 +87,33 @@ def operator_signup(data):
             add_user = Operator_creds(employee_id=employee_id, fName=fName, mName=mName, lName=lName, skill_level=skill_level, dob=dob, mobile=mobile, email=email, password=password)
             db.session.add(add_user)
             db.session.commit()
-            return jsonify({'Response:': "Operator User added successfully!"})
+            return jsonify({'Response:': "Operator User added successfully!"}), 201
         else:
-            return jsonify( {"Response":"User already exists."} )
+            return jsonify( {"Response":"User already exists."} ), 200
     except Exception as e:
-        return jsonify({"Error in adding data":f"Some error occurred while adding the data to the database: {e}"})
+        return jsonify({"Error in adding data":f"Some error occurred while adding the data to the database: {e}"}), 422
+
+def get_operator_details(data):
+    try:
+        employee_id = data.get("employee_id")
+
+        operator_details_data = Operator_creds.query.filter_by(employee_id=employee_id).first()
+
+        if operator_details_data is not None:
+            result = {}
+            result['Employee ID'] = operator_details_data.employee_id
+            result["First Name"] = operator_details_data.fName
+            result["Middle Name"] = operator_details_data.mName
+            result["Last Name"] = operator_details_data.lName
+            result["Skill Level"] = operator_details_data.skill_level
+            result["Date of Birth"] = operator_details_data.dob.strftime("%B %d, %Y")
+            result["Mobile Number"] = operator_details_data.mobile
+            result["Email"] = operator_details_data.email
+            return jsonify(result), 200
+        else:
+            return jsonify({"Message": "No Details Found for the Employee Id Provided"}),404
+    except Exception as e:
+        return jsonify({"Error in adding data":f"Some error occurred while adding the data to the database: {e}"}), 422
 
 def add_part(data):
     try:
@@ -425,6 +447,10 @@ def assign_task(data):
             total_assigned_task = stationTask.get('total_assigned_task')
 
             # date = datetime.now().date()
+            employee_data = work_assigned_to_operator.query.filter_by(employee_id=employee_id).first()
+            if employee_data:
+                return jsonify({'Message': f'Operator has assigned task on {employee_data.station_id} OR Please reset the all task first'}), 200
+
             station = work_assigned_to_operator.query.filter_by(station_id=station_id).first()
             if station:
                 if station.end_shift_time>=current_time and station.date==current_date:
@@ -660,8 +686,6 @@ def get_last_date_data(data):
         return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
 
 
-
-
 def get_floor_data(data):
     try:
         floor_no = data.get('floor_no')
@@ -741,3 +765,81 @@ def get_floor_data(data):
     except Exception as e:
         db.session.rollback()
         return jsonify({'Error': f'Failed to fetch data: {e}'}), 500
+
+def  get_stations_previous_data(data):
+    try:
+        floor_no = data.get("floor_no")
+        date = data.get("date")
+        time_str = data.get("time")
+        # Convert string to datetime.time object
+        time_obj = datetime.strptime(time_str, "%H:%M:%S").time()
+        
+        previous_stations_data = {}
+        
+        get_stations = stations.query.filter_by(floor_no=floor_no).all()
+        if get_stations:
+            for entity in range(0, len(get_stations)):
+                station_id = get_stations[entity].station_id
+                # latest_data = work_assigned_to_operator_logs.query.filter_by(station_id=station_id, date=date).order_by(db.desc(work_assigned_to_operator_logs.date)).first()
+                latest_datas = work_assigned_to_operator_logs.query.filter_by(station_id=station_id, date=date).all()
+                if latest_datas:
+                    for i in range(0, len(latest_datas)):
+                        if latest_datas[i].start_shift_time <= time_obj <= latest_datas[i].end_shift_time:
+                            latest_data =  latest_datas[i]
+                            process_data = processes_info.query.filter_by(process_no=latest_data.process_no).first()
+                            # break
+                        # if latest_data:
+                            operator_name = Operator_creds.query.filter_by(employee_id=latest_data.employee_id).first()
+                            if operator_name:
+                                previous_stations_data[station_id] = [operator_name.fName]
+                                previous_stations_data[station_id].append(operator_name.lName)
+                                previous_stations_data[station_id].append(operator_name.skill_level)
+                                previous_stations_data[station_id].append(latest_data.part_no)
+                                previous_stations_data[station_id].append(latest_data.process_no)
+                                # previous_stations_data[station_id].append(process_data.required_skill_level)
+                            else:
+                                jsonify({"Message": "Bymistake operator doesn't exist, Please contact database admin..."}), 404
+                else:
+                    jsonify({"Message": "Not matched data found"}), 404
+            return jsonify({"Datas": previous_stations_data}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
+
+
+
+#####################################################################################################################################
+############################################### get previous data and api for history ###############################################
+#####################################################################################################################################
+
+def station_history(data):
+    try:
+        station_id = data.get("station_id")
+        date = datetime.now().date()
+        
+        station_previous_data = work_assigned_to_operator_logs.query.filter_by(station_id=station_id, date=date)
+
+        if station_previous_data:
+            employee_id = station_previous_data.employee_id
+            part_no = station_previous_data.part_no
+            process_no = station_previous_data.process_no
+            start_shift_time = station_previous_data.start_shift_time
+            end_shift_time = station_previous_data.end_shift_time
+            shift = station_previous_data.shift
+            assigned_by_owner = station_previous_data.assigned_by_owner
+            total_assigned_task = station_previous_data.total_assigned_task
+            check_fpa_status_at = station_previous_data.check_fpa_status_at
+            passed = station_previous_data.passed
+            filled = station_previous_data.filled
+            failed = station_previous_data.failed
+
+        
+
+        #         return jsonify({"Datas": datas}), 200
+        #     else:
+        #         return jsonify({"Message": "Employees data does not exist."}), 404
+        # else:
+        #     return jsonify({"Message": "Stations data does not exist."}), 404
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422

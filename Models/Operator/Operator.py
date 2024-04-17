@@ -36,10 +36,31 @@ def get_task(data):
         if  get_task_data:
             if get_task_data.date==date:
                 if get_task_data.end_shift_time>=current_time:
+                    task_data = {
+                        # 'station_id': get_task_data.station_id,
+                        # 'part_no': get_task_data.part_no,
+                        # 'process_no':get_task_data.process_no,
+                        'start_shift_time':get_task_data.start_shift_time.strftime('%H:%M:%S'),
+                        'end_shift_time':get_task_data.end_shift_time.strftime('%H:%M:%S'),
+                        # 'assigned_by_owner':get_task_data.assigned_by_owner,
+                        # 'operator_login_status':get_task_data.operator_login_status,
+                        # 'employee_id':get_task_data.employee_id,
+                        'shift':get_task_data.shift,
+                        'total_assigned_task':get_task_data.total_assigned_task,
+                        # 'left_for_rework':get_task_data.left_for_rework,
+                        'passed':get_task_data.passed,
+                        # 'filled':get_task_data.filled,
+                        'failed':get_task_data.failed
+                        # Add other relevant fields here
+                    }
+                    
                     assigned_process = get_task_data.process_no
                     print(assigned_process)
                     get_process_data = processes_info.query.filter_by(process_no=assigned_process).first()
-                    images_urls = get_process_data.images_urls
+                    try:
+                        images_urls = get_process_data.images_urls
+                    except:
+                        images_urls = "Images not availabel for this process"
                     
                     get_parameters = parameters_info.query.filter_by(process_no=assigned_process).all()
                     process_params_info = []
@@ -72,9 +93,9 @@ def get_task(data):
                     if get_readings_data:
                         station_reading_data = {'reading_1': get_readings_data.reading_1, 'reading_2': get_readings_data.reading_2, 'reading_3': get_readings_data.reading_3, 'reading_4': get_readings_data.reading_4, 'reading_5': get_readings_data.reading_5}
                     else:
-                        station_reading_data = "No Data Found"
+                        station_reading_data = {'reading_1': "null", 'reading_2': "null", 'reading_3': "null", 'reading_4': "null", 'reading_5': "null"}
                     
-                    return jsonify({"urls":images_urls, "check_sheet_datas":check_sheet_datas, "total_check_sheet_params": len(check_sheet_datas), "process_params_info":process_params_info, "check_sheet_fill_status":check_sheet_fill_status, "station_reading_data": station_reading_data}), 200
+                    return jsonify({"work_operator_data":task_data, "urls":images_urls, "check_sheet_datas":check_sheet_datas, "total_check_sheet_params": len(check_sheet_datas), "process_params_info":process_params_info, "check_sheet_fill_status":check_sheet_fill_status, "station_reading_data": station_reading_data}), 200
                 else:
                     return jsonify({"Message":"no task assigned to this station at current shift..."}), 404
             else:
