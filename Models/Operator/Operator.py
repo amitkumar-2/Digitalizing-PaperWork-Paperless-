@@ -44,12 +44,12 @@ def get_task(data):
                         'end_shift_time':get_task_data.end_shift_time.strftime('%H:%M:%S'),
                         # 'assigned_by_owner':get_task_data.assigned_by_owner,
                         # 'operator_login_status':get_task_data.operator_login_status,
-                        # 'employee_id':get_task_data.employee_id,
+                        'flrInchr_employee_id':get_task_data.assigned_by_owner,
                         'shift':get_task_data.shift,
                         'total_assigned_task':get_task_data.total_assigned_task,
                         # 'left_for_rework':get_task_data.left_for_rework,
                         'passed':get_task_data.passed,
-                        # 'filled':get_task_data.filled,
+                        'filled':get_task_data.filled,
                         'failed':get_task_data.failed
                         # Add other relevant fields here
                     }
@@ -95,7 +95,14 @@ def get_task(data):
                     else:
                         station_reading_data = {'reading_1': "null", 'reading_2': "null", 'reading_3': "null", 'reading_4': "null", 'reading_5': "null"}
                     
-                    return jsonify({"work_operator_data":task_data, "urls":images_urls, "check_sheet_datas":check_sheet_datas, "total_check_sheet_params": len(check_sheet_datas), "process_params_info":process_params_info, "check_sheet_fill_status":check_sheet_fill_status, "station_reading_data": station_reading_data}), 200
+                    get_fpa_status = fpa_and_set_up_approved_records.query.filter_by(station_id=station_id).first()
+                    station_fpa_data = []
+                    if get_fpa_status:
+                        station_fpa_data.append({"station_id": get_fpa_status.station_id, "start_shift_1_parameters_values": get_fpa_status.start_shift_1_parameters_values, "start_shift_2_parameters_values": get_fpa_status.start_shift_2_parameters_values, "end_shift_1_parameters_values": get_fpa_status.end_shift_1_parameters_values, "end_shift_2_parameters_values": get_fpa_status.end_shift_2_parameters_values})
+                    else:
+                        station_fpa_data = None
+                    
+                    return jsonify({"work_operator_data":task_data, "urls":images_urls, "check_sheet_datas":check_sheet_datas, "total_check_sheet_params": len(check_sheet_datas), "process_params_info":process_params_info, "check_sheet_fill_status":check_sheet_fill_status, "station_reading_data": station_reading_data, "station_fpa_data": station_fpa_data}), 200
                 else:
                     return jsonify({"Message":"no task assigned to this station at current shift..."}), 404
             else:
@@ -123,16 +130,42 @@ def checksheet_add_logs(data):
         return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
 
 
-def add_work(data):
+def add_checksheet_data(data):
     try:
-        operator_employee_id = data.get('operator_employee_id')
+        station_id = data.get('station_id')
+        oprtr_employee_id = data.get('oprtr_employee_id')
+        flrInchr_employee_id = data.get('flrInchr_employee_id')
+        status_datas = data.get('status_datas')
+        
+        add_checksheet_data = check_sheet_data(oprtr_employee_id=oprtr_employee_id, flrInchr_employee_id=flrInchr_employee_id, status_datas=status_datas, station_id=station_id)
+        db.session.add(add_checksheet_data)
+        db.session.commit()
+        return jsonify({"Message": "Check sheet data submited successfully"}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
+
+
+def add_fpa_data(data):
+    try:
+        station_id = data.get('station_id')
         date = datetime.now().date()
+        
 
         existing_operator_today = fpa_and_set_up_approved_records.query.filter_by(
-            operator_employee_id=operator_employee_id, date=date
+            station_id=station_id, date=date
         ).first()
+        running_task_station_id = work_assigned_to_operator.query.filter_by(station_id=station_id).first()
 
         if existing_operator_today:
+            # if len(existing_operator_today.end_shift_2_time) > 4:
+            #     return jsonify({"Message": "You have already submitted the end shift 2 value."}), 301
+            # elif len(existing_operator_today.end_shift_1_time) > 4:
+            #     return jsonify({"Message": "You have already submitted the end shift 1 value."}), 301
+            # elif len(existing_operator_today.start_shift_2_time) > 4:
+            #     return jsonify({"Message": "You have already submitted the start shift 2 value."}), 301
+            # elif len(existing_operator_today.start_shift_1_time) > 4:
+            #     return jsonify({"Message": "You have already submitted the start shift 1 value."}), 301
             updated = False  # Flag to check if update is needed
 
             for shift in ['start_shift_1', 'start_shift_2', 'end_shift_1', 'end_shift_2']:
@@ -142,16 +175,21 @@ def add_work(data):
                 if data.get(parameters_values_key) and not getattr(existing_operator_today, parameters_values_key):
                     setattr(existing_operator_today, parameters_values_key, data.get(parameters_values_key))
                     setattr(existing_operator_today, time_key, datetime.now().time())
+                    
+                    running_task_station_id.passed = data.get('passed') or running_task_station_id.passed
+                    running_task_station_id.failed = data.get('failed') or running_task_station_id.failed
+                    
                     updated = True
 
             if updated:
+                # db.session.add(running_task_station_id)
                 db.session.commit()
-                return jsonify({"Message": "Your work updates have been saved successfully"}), 200
+                return jsonify({"Message": "Your work updates have been saved successfully"}), 201
             else:
-                return jsonify({"Message": "No updates were necessary"}), 200
+                return jsonify({"Message": f"No updates were necessary for this station"}), 200
         else:
             new_work = fpa_and_set_up_approved_records(
-                operator_employee_id=operator_employee_id,
+                station_id=station_id,
                 start_shift_1_parameters_values=data.get('start_shift_1_parameters_values', ''),
                 start_shift_1_time=datetime.now().time() if data.get('start_shift_1_parameters_values') else None,
                 date=date
@@ -163,6 +201,7 @@ def add_work(data):
         
     except Exception as e:
         db.session.rollback()
+        print("###########", f'Block is not able to execute successfully {e}')
         return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
 
 def add_reading(data):
@@ -234,9 +273,10 @@ def notify_to_incharge_func(data):
         station_id = data.get("station_id")
         csp_id = data.get("csp_id")
         floor_no = data.get("floor_no")
-        date_and_time = datetime.now()
+        date = datetime.now().date()
+        time = datetime.now().time()
         
-        add_notification = notify_to_incharge(station_id=station_id, csp_id=csp_id, floor_no=floor_no, created_at=date_and_time)
+        add_notification = notify_to_incharge(station_id=station_id, csp_id=csp_id, floor_no=floor_no, created_date=date, created_time=time)
         db.session.add(add_notification)
         db.session.commit()
         return jsonify({"Message":f"Notification sent to in-charge for Station ID :{station_id}"}), 200

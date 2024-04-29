@@ -17,7 +17,7 @@ from collections import Counter
 from Database.models import Operator_creds, floor_incharge_creds, work_assigned_to_operator, parts_info, processes_info, parameters_info, check_sheet_data, check_sheet_data_logs, work_assigned_to_operator_logs
 import pytz
 from Database.init_and_conf import db
-from Models.FloorIncharge.FloorIncharge import login, operator_signup, add_part, get_parts, update_part, add_process, get_processes, add_parameter, add_checksheet, stations_info, stations_current_status, refresh_data, free_stations_if_task_completed, disable_part, assign_task, update_processes, update_parameter, get_parameter, get_notification_info, get_floor_data, get_stations_previous_data, get_operator_details
+from Models.FloorIncharge.FloorIncharge import login, operator_signup, add_part, get_parts, update_part, add_process, get_processes, add_parameter, add_checksheet, stations_info, stations_current_status, refresh_data, free_stations_if_task_completed, disable_part, assign_task, update_processes, update_parameter, get_parameter, get_notification_info, get_floor_data, get_stations_previous_data, get_operator_details,add_stations
 from Config.token_handler import TokenRequirements
 
 FloorIncharge1=Blueprint('FloorIncharge', __name__)
@@ -156,7 +156,8 @@ def operator_signup_handler():
 
 ################################### Operator details API #######################################################
 @FloorIncharge1.route("/floorincharge/operator/details", methods=["POST"])
-def get_operator_details_handler():
+@TokenRequirements.token_required
+def get_operator_details_handler(**kwargs):
     return get_operator_details(request.form)
 
 # Floor-Incharge Dashboard all Data API
@@ -270,6 +271,11 @@ def checksheet_add_logs(**kwargs):
         db.session.rollback()
         return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
 
+################ add stations api #######################3333
+@FloorIncharge1.route('/floorincharge/add_stations', methods=['POST'])
+@TokenRequirements.token_required
+def add_stations_handler(**kwargs):
+    return add_stations(request.json)
 
 ####################################################### getting staions info #######################################################
 @FloorIncharge1.route("/floorincharge/stations_info", methods=['POST'])

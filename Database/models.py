@@ -169,8 +169,10 @@ class work_assigned_to_operator_logs(db.Model):
     passed = db.Column(db.Integer)
     filled = db.Column(db.Integer)
     failed = db.Column(db.Integer)
+    assigned_date = db.Column(db.Date, nullable=False, index=True)
     time = db.Column(db.Time, default=datetime.now(pytz.timezone('Asia/Kolkata')).time())
-    date = db.Column(db.Date, default=datetime.now(pytz.timezone('Asia/Kolkata')).date())
+    logs_date = db.Column(db.Date, default=datetime.now(pytz.timezone('Asia/Kolkata')).date())
+    
 
 
 ##################################### all parts information table #########################################
@@ -215,7 +217,7 @@ class parameters_info(db.Model):
 
 class  fpa_and_set_up_approved_records(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    operator_employee_id = db.Column(db.String(length=20), nullable=False, index=True)
+    station_id = db.Column(db.String(length=20), nullable=False, index=True)
     start_shift_1_parameters_values = db.Column(db.String(length=1500))
     start_shift_1_time = db.Column(db.Time)
     start_shift_2_parameters_values = db.Column(db.String(length=1500))
@@ -228,16 +230,17 @@ class  fpa_and_set_up_approved_records(db.Model):
 
 class  fpa_and_set_up_approved_records_logs(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    operator_employee_id = db.Column(db.String(length=20), nullable=False)
-    start_shift_1_parameters_values = db.Column(db.String(length=50))
+    station_id = db.Column(db.String(length=20), nullable=False)
+    start_shift_1_parameters_values = db.Column(db.String(length=1500))
     start_shift_1_time = db.Column(db.Time)
-    start_shift_2_parameters_values = db.Column(db.String(length=50))
+    start_shift_2_parameters_values = db.Column(db.String(length=1500))
     start_shift_2_time = db.Column(db.Time)
-    end_shift_1_parameters_values = db.Column(db.String(length=50))
+    end_shift_1_parameters_values = db.Column(db.String(length=1500))
     end_shift_1_time = db.Column(db.Time)
-    end_shift_2_parameters_values = db.Column(db.String(length=50))
+    end_shift_2_parameters_values = db.Column(db.String(length=1500))
     end_shift_2_time = db.Column(db.Time)
-    date = db.Column(db.Date, nullable=False)
+    date = db.Column(db.Date)
+    logs_date = db.Column(db.Date, nullable=False)
 
 
 
@@ -314,22 +317,22 @@ class reading_params(db.Model):
     reading_4_time = db.Column(db.Time)
     reading_5 = db.Column(db.String(length=10))
     reading_5_time = db.Column(db.Time)
-    station_id = db.Column(db.String(length=20), nullable=False)
+    station_id = db.Column(db.String(length=20), primary_key=True)
     date = db.Column(db.Date, default=datetime.now(pytz.timezone('Asia/Kolkata')).date())
 
 class reading_params_logs(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     parameter_no = db.Column(db.String(length=60), nullable=False, index=True)
-    reading_1 = db.Column(db.String(length=10), nullable=False)
-    reading_1_time = db.Column(db.Time, nullable=False)
-    reading_2 = db.Column(db.String(length=10), nullable=False)
-    reading_2_time = db.Column(db.Time, nullable=False)
-    reading_3 = db.Column(db.String(length=10), nullable=False)
-    reading_3_time = db.Column(db.Time, nullable=False)
-    reading_4 = db.Column(db.String(length=10), nullable=False)
-    reading_4_time = db.Column(db.Time, nullable=False)
-    reading_5 = db.Column(db.String(length=10), nullable=False)
-    reading_5_time = db.Column(db.Time, nullable=False)
+    reading_1 = db.Column(db.String(length=10))
+    reading_1_time = db.Column(db.Time)
+    reading_2 = db.Column(db.String(length=10))
+    reading_2_time = db.Column(db.Time)
+    reading_3 = db.Column(db.String(length=10))
+    reading_3_time = db.Column(db.Time)
+    reading_4 = db.Column(db.String(length=10))
+    reading_4_time = db.Column(db.Time)
+    reading_5 = db.Column(db.String(length=10))
+    reading_5_time = db.Column(db.Time)
     station_id = db.Column(db.String(length=20), nullable=False)
     date = db.Column(db.Date, default=datetime.now(pytz.timezone('Asia/Kolkata')).date())
 
@@ -350,4 +353,5 @@ class  notify_to_incharge(db.Model):
     station_id = db.Column(db.String(length=25), primary_key=True)
     csp_id = db.Column(db.Integer, primary_key=True)
     floor_no = db.Column(db.String(length=15), nullable=False)
-    created_at = db.Column(db.DateTime)
+    created_date = db.Column(db.Date)
+    created_time = db.Column(db.Time)

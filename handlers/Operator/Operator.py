@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from functools import wraps
 from Database.models import Operator_creds, floor_incharge_creds, work_assigned_to_operator, fpa_and_set_up_approved_records, reading_params
 from Database.init_and_conf import db
-from Models.Operator.Operator import operator_login, add_work, add_reading, get_task, notify_to_incharge_func, check_fpa_status
+from Models.Operator.Operator import operator_login, add_fpa_data, add_reading, get_task, notify_to_incharge_func, check_fpa_status, update_work_status, add_checksheet_data
 
 
 Operator1=Blueprint('Operator', __name__)
@@ -99,8 +99,8 @@ def check_assigned_task_by_app_id(**kwargs):
 
 @Operator1.route("/operator/add_and_update/work", methods=['POST'])
 # @token_required
-def add_work_handler():
-    return add_work(request.form)
+def update_work_status_handler():
+    return update_work_status(request.form)
 
 
 ##################################################### add and update readings by operator ##########################################
@@ -116,7 +116,20 @@ def notify_to_incharge_func_handler(**kwargs):
     return notify_to_incharge_func(request.form)
 
 
+
+@Operator1.route("/operator/add_fpa_data", methods=["POST"])
+@TokenRequirements.token_required
+def add_fpa_data_handler(**kwargs):
+    return add_fpa_data(request.form)
+
+
 @Operator1.route("/operator/get_fpa_status", methods=["POST"])
 @TokenRequirements.token_required
 def check_fpa_status_handler(**kwargs):
     return check_fpa_status(request.form)
+
+
+@Operator1.route("/operator/add_checksheet_data", methods=["POST"])
+@TokenRequirements.token_required
+def add_checksheet_data_handler(**kwargs):
+    return add_checksheet_data(request.form)
