@@ -651,7 +651,6 @@ def free_stations_if_task_completed(data):
             get_station_check_sheet_data = check_sheet_data.query.filter_by(station_id=station_id).first()
             get_fpa_data = fpa_and_set_up_approved_records.query.filter_by(station_id=station_id).first()
             station_readings_entities = reading_params.query.filter_by(station_id=station_id).all()
-            print("###################", station_readings_entities)
             if get_station_data:
                 if get_station_data.end_shift_time>=current_time and get_station_data.date==current_date:
                     process_data = processes_info.query.filter_by(process_no=get_station_data.process_no).first()
@@ -690,40 +689,46 @@ def free_stations_if_task_completed(data):
                     
                     try:
                         if station_readings_entities:
+                            reading_param_logs_list = []
                             for entity in station_readings_entities:
                                 new_readings_data_logs = reading_params_logs(parameter_no=entity.parameter_no, reading_1=entity.reading_1, reading_1_time=entity.reading_1_time, reading_2=entity.reading_2, reading_2_time=entity.reading_2_time, reading_3=entity.reading_3, reading_3_time=entity.reading_3_time, reading_4=entity.reading_4, reading_4_time=entity.reading_4_time, reading_5=entity.reading_5, reading_5_time=entity.reading_5_time, station_id=entity.station_id, date=entity.date, logs_date=current_date)
-
-                                db.session.add(new_readings_data_logs)
-                                db.session.commit()
                                 
-                                if station_readings_entities:
-                                    db.session.delete(station_readings_entities)
-                                    db.session.commit()
-                                else:
-                                    pass
+                                reading_param_logs_list.append(new_readings_data_logs)
                         else:
                             pass
                     except Exception as e:
                         print("This is an error: ", e)
                     
+                    
+                    if station_readings_entities:
+                        for entity_data  in reading_param_logs_list:
+                            db.session.add(entity_data)
+                        # db.session.commit()
+
+                        for  remove_data in station_readings_entities:
+                            db.session.delete(remove_data)
+                        # db.session.commit()
+                    else:
+                        pass
+                    
                     db.session.add(new_fpa_data_logs)
-                    db.session.commit()
+                    # db.session.commit()
                     
                     db.session.add(new_check_sheet_record)
-                    db.session.commit()
+                    # db.session.commit()
 
                     db.session.add(new_record)
-                    db.session.commit()
+                    # db.session.commit()
                     
                     if get_fpa_data:
                         db.session.delete(get_fpa_data)
-                        db.session.commit()
+                        # db.session.commit()
                     else:
                         pass
                     
                     if get_station_check_sheet_data:
                         db.session.delete(get_station_check_sheet_data)
-                        db.session.commit()
+                        # db.session.commit()
                     else:
                         pass
                     
@@ -745,6 +750,9 @@ def free_stations_if_task_completed(data):
     except Exception as e:
         db.session.rollback()
         return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
+    finally:
+        # Ensure the session is closed properly
+        db.session.close()
 
 def get_notification_info(data):
     try:
@@ -774,11 +782,6 @@ def get_notification_info(data):
     except Exception as e:
         db.session.rollback()
         return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
-        
-
-def get_fpa_history(data):
-    date = data.get('date')
-    line_no = data.get('line_no')
 
 
 def get_last_date_data(data):

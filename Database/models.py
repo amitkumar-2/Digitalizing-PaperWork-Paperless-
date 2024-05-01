@@ -334,7 +334,8 @@ class reading_params_logs(db.Model):
     reading_5 = db.Column(db.String(length=10))
     reading_5_time = db.Column(db.Time)
     station_id = db.Column(db.String(length=20), nullable=False)
-    date = db.Column(db.Date, default=datetime.now(pytz.timezone('Asia/Kolkata')).date())
+    date = db.Column(db.Date)
+    logs_date = db.Column(db.Date)
 
 
 
@@ -355,3 +356,19 @@ class  notify_to_incharge(db.Model):
     floor_no = db.Column(db.String(length=15), nullable=False)
     created_date = db.Column(db.Date)
     created_time = db.Column(db.Time)
+    
+    
+######################################## reson table for fail processes ################################################
+class reasons(db.model):
+    reason_id  = db.Column(db.Integer,primary_key= True)
+    reason = db.Column(db.String(length=200),nullable= False)
+
+
+######################################### failed item table #########################################################
+
+class failed_items(db.Model):
+    item_id = db.Column(db.String(length=100), primary_key=True)
+    reason_id  = db.Column(db.Integer,nullable=False,index=True)
+    station_id = db.Column(db.String(length=20), nullable=False, index=True)
+    time = db.Column(db.Time)
+    date = db.Column(db.Date)
