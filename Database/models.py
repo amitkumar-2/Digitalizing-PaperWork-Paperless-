@@ -333,8 +333,9 @@ class reading_params_logs(db.Model):
     reading_4_time = db.Column(db.Time)
     reading_5 = db.Column(db.String(length=10))
     reading_5_time = db.Column(db.Time)
-    station_id = db.Column(db.String(length=20), nullable=False)
-    date = db.Column(db.Date)
+    shift = db.Column(db.String(length=2), nullable=False)
+    station_id = db.Column(db.String(length=20), nullable=False, index=True)
+    date = db.Column(db.Date, index=True)
     logs_date = db.Column(db.Date)
 
 
@@ -351,24 +352,31 @@ class params_ucl_lcl(db.Model):
 
 ######################################## operator check params notification table ####################################
 class  notify_to_incharge(db.Model):
-    station_id = db.Column(db.String(length=25), primary_key=True)
-    csp_id = db.Column(db.Integer, primary_key=True)
+    notification_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    station_id = db.Column(db.String(length=25), index=True, nullable=False)
+    csp_id = db.Column(db.Integer, index=True, nullable=False)
     floor_no = db.Column(db.String(length=15), nullable=False)
     created_date = db.Column(db.Date)
     created_time = db.Column(db.Time)
     
     
 ######################################## reson table for fail processes ################################################
-class reasons(db.model):
-    reason_id  = db.Column(db.Integer,primary_key= True)
+class reasons(db.Model):
+    reason_id  = db.Column(db.Integer,primary_key= True, autoincrement=True)
     reason = db.Column(db.String(length=200),nullable= False)
+    floor_no = db.Column(db.String(length=15), nullable=False)
+    floor_incharge_id = db.Column(db.String(30), nullable=False)
+    date = db.Column(db.Date)
+    time = db.Column(db.Time)
 
 
 ######################################### failed item table #########################################################
 
 class failed_items(db.Model):
     item_id = db.Column(db.String(length=100), primary_key=True)
+    part_no = db.Column(db.String(length=20))
     reason_id  = db.Column(db.Integer,nullable=False,index=True)
     station_id = db.Column(db.String(length=20), nullable=False, index=True)
+    remarks = db.Column(db.String(length=200))
     time = db.Column(db.Time)
     date = db.Column(db.Date)

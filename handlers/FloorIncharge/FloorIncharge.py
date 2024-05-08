@@ -17,7 +17,7 @@ from collections import Counter
 from Database.models import Operator_creds, floor_incharge_creds, work_assigned_to_operator, parts_info, processes_info, parameters_info, check_sheet_data, check_sheet_data_logs, work_assigned_to_operator_logs
 import pytz
 from Database.init_and_conf import db
-from Models.FloorIncharge.FloorIncharge import login, operator_signup, add_part, get_parts, update_part, add_process, get_processes, add_parameter, add_checksheet, stations_info, stations_current_status, refresh_data, free_stations_if_task_completed, disable_part, assign_task, update_processes, update_parameter, get_parameter, get_notification_info, get_floor_data, get_stations_previous_data, get_operator_details,add_stations
+from Models.FloorIncharge.FloorIncharge import login, operator_signup, add_part, get_parts, update_part, add_process, get_processes, add_parameter, add_checksheet, stations_info, stations_current_status, refresh_data, free_stations_if_task_completed, disable_part, assign_task, update_processes, update_parameter, get_parameter, get_notification_info, get_floor_data, get_stations_previous_data, get_operator_details,add_stations, delete_notification, add_reason, get_reasons_for_items, delete_reason_for_items, get_readings_for_chart
 from Config.token_handler import TokenRequirements
 
 FloorIncharge1=Blueprint('FloorIncharge', __name__)
@@ -314,6 +314,14 @@ def free_station(**kwargs):
 def get_notification_info_handler(**kwargs):
     return get_notification_info(request.form)
 
+
+############################################# get notification info ############################################
+@FloorIncharge1.route("/floorincharge/delete_notification", methods=['POST'])
+@TokenRequirements.token_required
+def delete_notification_handler(**kwargs):
+    return delete_notification(request.form)
+
+
 ############################################# get floor all data ############################################
 # @FloorIncharge1.route("/floorincharge/get_floor_data", methods=['POST'])
 # @TokenRequirements.token_required
@@ -325,3 +333,27 @@ def get_notification_info_handler(**kwargs):
 @TokenRequirements.token_required
 def get_stations_previous_data_handler(**kwargs):
     return get_stations_previous_data(request.form)
+
+########################################## add resons for floor ########################################
+@FloorIncharge1.route("/floorincharge/add_reason", methods=['POST'])
+@TokenRequirements.token_required
+def add_reason_handler(**kwargs):
+    return add_reason(request.form)
+
+################################### Get the reasons for the item data ##########################################
+@FloorIncharge1.route("/floorincharge/get_reasons_for_items", methods=['GET'])
+@TokenRequirements.token_required
+def get_reasons_for_items_handler(**kwargs):
+    return get_reasons_for_items(request.form)
+
+################################### Delete the reasons for the item data ##########################################
+@FloorIncharge1.route("/floorincharge/delete_reason_for_items",methods=['POST'])
+@TokenRequirements.token_required
+def delete_reason_for_items_handler(**kwargs):
+    return delete_reason_for_items(request.form)
+
+################################### get data for readings for chart ##########################################
+@FloorIncharge1.route("/floorincharge/get_readings_for_chart",methods=['POST'])
+@TokenRequirements.token_required
+def get_readings_for_chart_handler(**kwargs):
+    return get_readings_for_chart(request.form)

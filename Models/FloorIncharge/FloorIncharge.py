@@ -1,7 +1,7 @@
 from flask import request, jsonify, session, current_app
 import pytz
 from Database.init_and_conf import db
-from Database.models import floor_incharge_creds, Operator_creds, parts_info, processes_info, parameters_info, check_sheet_data, stations, work_assigned_to_operator, work_assigned_to_operator_logs, check_sheet, notify_to_incharge, check_sheet_data_logs, fpa_and_set_up_approved_records, fpa_and_set_up_approved_records_logs, reading_params, reading_params_logs
+from Database.models import floor_incharge_creds, Operator_creds, parts_info, processes_info, parameters_info, check_sheet_data, stations, work_assigned_to_operator, work_assigned_to_operator_logs, check_sheet, notify_to_incharge, check_sheet_data_logs, fpa_and_set_up_approved_records, fpa_and_set_up_approved_records_logs, reading_params, reading_params_logs, reasons
 # from handlers import create_tocken
 from Config.token_handler import TokenRequirements
 from datetime import datetime, timedelta
@@ -476,10 +476,11 @@ def assign_task(data):
         assigned_task_stations = {}
         running_task_stations = {}
         operator_assigned_station = {}
+        last_shift_on_these_stations = {}
         # username = kwargs["token_payload"][1]['username']
         for stationTask in data:
             station_id = stationTask.get('station_id')
-            print(station_id)
+            # print(station_id)
             employee_id = stationTask.get('employee_id')
             part_no = stationTask.get('part_no')
             process_no = stationTask.get('process_no')
@@ -488,7 +489,14 @@ def assign_task(data):
             shift = stationTask.get('shift')
             assigned_by_owner = stationTask.get('assigned_by_owner')
             total_assigned_task = stationTask.get('total_assigned_task')
-
+            
+            past_shift_of_station = work_assigned_to_operator_logs.query.filter_by(station_id=station_id, assigned_date=current_date).first()
+            if past_shift_of_station:
+                if shift == past_shift_of_station.shift:
+                    print("##printing shift", (past_shift_of_station.shift))
+                    last_shift_on_these_stations[past_shift_of_station.station_id] = shift
+                    continue
+            
             # date = datetime.now().date()
             employee_data = work_assigned_to_operator.query.filter_by(employee_id=employee_id).first()
             if employee_data:
@@ -516,7 +524,7 @@ def assign_task(data):
                 db.session.commit()
                 # return jsonify({'Message:': "Task assigned successfully to station!"}), 200
                 assigned_task_stations[station_id] = "Task assigned successfully to station"
-        return jsonify({'assigned task to': assigned_task_stations, 'running task to stations': running_task_stations, "operator_assigned_to_stations": operator_assigned_station}), 200
+        return jsonify({'assigned task to': assigned_task_stations, 'running task to stations': running_task_stations, "operator_assigned_to_stations": operator_assigned_station, "last_shift_on_these_stations": last_shift_on_these_stations}), 200
         
     except Exception as e:
         db.session.rollback()
@@ -691,7 +699,7 @@ def free_stations_if_task_completed(data):
                         if station_readings_entities:
                             reading_param_logs_list = []
                             for entity in station_readings_entities:
-                                new_readings_data_logs = reading_params_logs(parameter_no=entity.parameter_no, reading_1=entity.reading_1, reading_1_time=entity.reading_1_time, reading_2=entity.reading_2, reading_2_time=entity.reading_2_time, reading_3=entity.reading_3, reading_3_time=entity.reading_3_time, reading_4=entity.reading_4, reading_4_time=entity.reading_4_time, reading_5=entity.reading_5, reading_5_time=entity.reading_5_time, station_id=entity.station_id, date=entity.date, logs_date=current_date)
+                                new_readings_data_logs = reading_params_logs(parameter_no=entity.parameter_no, reading_1=entity.reading_1, reading_1_time=entity.reading_1_time, reading_2=entity.reading_2, reading_2_time=entity.reading_2_time, reading_3=entity.reading_3, reading_3_time=entity.reading_3_time, reading_4=entity.reading_4, reading_4_time=entity.reading_4_time, reading_5=entity.reading_5, reading_5_time=entity.reading_5_time, station_id=entity.station_id, shift=get_station_data.shift, date=entity.date, logs_date=current_date)
                                 
                                 reading_param_logs_list.append(new_readings_data_logs)
                         else:
@@ -767,6 +775,7 @@ def get_notification_info(data):
                     csp_name = csp_data.csp_name
                 
             notifications.append({
+                "notification_id": notification.notification_id,
                 "station_id": notification.station_id,
                 "csp_name": csp_name,
                 "csp_id": notification.csp_id,
@@ -783,6 +792,18 @@ def get_notification_info(data):
         db.session.rollback()
         return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
 
+def delete_notification(data):
+    try:
+        notification_id = data.get("notification_id")
+        
+        add_notification = notify_to_incharge.query.filter_by(notification_id=notification_id).first()
+        db.session.delete(add_notification)
+        db.session.commit()
+        return jsonify({"Message":f"Notification sent to in-charge for Station ID :{notification_id}"}), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
 
 def get_last_date_data(data):
     try:
@@ -929,11 +950,115 @@ def  get_stations_previous_data(data):
         db.session.rollback()
         return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
 
+################################ failed items reason functions ##############################
+def add_reason(data):
+    try:
+        reason = data.get('reason')
+        floor_no=data.get('floor_no')
+        floor_incharge_id=data.get('floor_incharge_id')
+        current_time = datetime.now().time()
+        current_date = datetime.now().date()
+        if len(reason)<=0:
+            return jsonify({'Error': 'Reason is required'}), 422
+        if len(floor_no)<=0:
+            return jsonify({'Error':'Floor_no is required'}), 422
+        if len(floor_incharge_id)<=0:
+            return jsonify({'Error':'Floor_incharge_id is required'}), 422
+        reason_for_parts = reasons(reason=reason,floor_no=floor_no,floor_incharge_id=floor_incharge_id,date=current_date,time=current_time)
+        db.session.add(reason_for_parts)
+        db.session.commit()
+        return jsonify({'Message': 'Reason for parts added successfully'}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
 
+def get_reasons_for_items(data):
+    try:
+        floor_no=data.get('floor_no')
+        if floor_no:
+            exist_reasons= reasons.query.filter_by(floor_no=floor_no).all()
+            if exist_reasons:
+                reasons_data = [
+                {'reason_id': reasons.reason_id, 'reason': reasons.reason}
+                        for reasons in exist_reasons]
+                return jsonify({"reasons": reasons_data}), 200
+            else:
+                return jsonify({"Message": "No reasons found for the floor_no."}), 404
+        else:
+            return jsonify({"Message": "Please provide floor_no."}), 404
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'Error': f'Failed to fetch data: {e}'}), 500
+
+def delete_reason_for_items(data):
+    try:
+        reason_id=data.get('reason_id')
+        reason = reasons.query.filter_by(reason_id=reason_id).first()
+        if reason:
+            db.session.delete(reason)
+            db.session.commit()
+            return jsonify({"Message": f"Reason with reason_id {reason_id} deleted successfully."}), 200
+        else:
+            return jsonify({"Message": f"No reason found with reason_id {reason_id}."}), 404
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'Error': f'Failed to delete reason: {e}'}), 500
 
 #####################################################################################################################################
 ############################################### get previous data and api for history ###############################################
 #####################################################################################################################################
+
+def get_readings_for_chart(data):
+    row_start_date = data.get('start_date')
+    row_end_date = data.get('end_date')
+    
+    
+    start_date = datetime.strptime(row_start_date, '%Y-%m-%d').date()
+    end_date = datetime.strptime(row_end_date, '%Y-%m-%d').date()
+    
+    # Calculate the difference between dates
+    date_difference = (end_date - start_date).days
+    if date_difference > 46:
+        return  jsonify({"Message":"Your given date difference is more than 45 days"}), 403
+    
+    parameter_no = data.get('parameter_no')
+    
+    readings_data = {}
+    
+    station_readings_data = {}
+    
+
+    results = reading_params_logs.query.filter(
+        reading_params_logs.date.between(start_date, end_date),
+        reading_params_logs.parameter_no == parameter_no
+        ).paginate(per_page=200) #paginate(page, per_page, False)#yield_per(2) #.all()
+    
+    for entity in (results.items):
+        date = str(entity.date)
+        station_id = entity.station_id
+        
+        if date in readings_data:
+            pass
+        else:
+            readings_data[date]  = {}
+        if station_id in station_readings_data:
+            pass
+        else:
+            station_readings_data[station_id] = []
+            
+        # station_readings_data[station_id].append(entity.station_id)
+        station_readings_data[station_id].append(entity.reading_1)
+        # station_readings_data[station_id].append(str(entity.reading_1_time))
+        station_readings_data[station_id].append(entity.reading_2)
+        station_readings_data[station_id].append(entity.reading_3)
+        station_readings_data[station_id].append(entity.reading_4)
+        station_readings_data[station_id].append(entity.reading_5)
+        # station_readings_data[station_id].append(str(entity.reading_5_time))
+        readings_data[date] = station_readings_data
+    return jsonify({"result": readings_data}), 200
+    
+    
+
 
 def station_history(data):
     try:

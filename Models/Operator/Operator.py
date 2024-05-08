@@ -1,6 +1,6 @@
 from flask import request, session, jsonify, current_app
 from collections import Counter
-from Database.models import Operator_creds, fpa_and_set_up_approved_records, reading_params, stations, work_assigned_to_operator, processes_info, parameters_info, check_sheet, notify_to_incharge, check_sheet_data
+from Database.models import Operator_creds, fpa_and_set_up_approved_records, reading_params, stations, work_assigned_to_operator, processes_info, parameters_info, check_sheet, notify_to_incharge, check_sheet_data, reasons, failed_items
 from Database.init_and_conf import db
 from datetime import datetime
 from Config.token_handler import TokenRequirements
@@ -38,8 +38,8 @@ def get_task(data):
                 if get_task_data.end_shift_time>=current_time:
                     task_data = {
                         # 'station_id': get_task_data.station_id,
-                        # 'part_no': get_task_data.part_no,
-                        # 'process_no':get_task_data.process_no,
+                        'part_no': get_task_data.part_no,
+                        'process_no':get_task_data.process_no,
                         'start_shift_time':get_task_data.start_shift_time.strftime('%H:%M:%S'),
                         'end_shift_time':get_task_data.end_shift_time.strftime('%H:%M:%S'),
                         # 'assigned_by_owner':get_task_data.assigned_by_owner,
@@ -194,6 +194,9 @@ def add_fpa_data(data):
                 start_shift_1_time=datetime.now().time() if data.get('start_shift_1_parameters_values') else None,
                 date=date
             )
+            running_task_station_id.passed = data.get('passed') or running_task_station_id.passed
+            running_task_station_id.failed = data.get('failed') or running_task_station_id.failed
+            
             db.session.add(new_work)
             db.session.commit()
             return jsonify({"Message": "Your new work record has been added successfully"}), 200
@@ -249,6 +252,31 @@ def add_reading(data):
         db.session.rollback()
         return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
 
+def add_failed_items(data):
+    try:
+        station_id = data.get('station_id')
+        item_id = data.get('item_id')
+        part_no = data.get('part_no')
+        reason_id = data.get('reason_id')
+        remark = data.get('remark')
+        current_time = datetime.now().time()
+        current_date = datetime.now().date()
+        get_station_data = work_assigned_to_operator.query.filter_by(station_id=station_id).first()
+        if get_station_data:
+            get_station_data.passed = data.get('passed') or get_station_data.passed
+            get_station_data.filled = data.get('filled') or get_station_data.filled
+            get_station_data.failed = data.get('failed') or get_station_data.failed
+            
+            add_failed_item = failed_items(item_id=item_id, part_no=part_no, reason_id=reason_id, station_id=station_id, time=current_time, date=current_date, remarks=remark)
+
+            db.session.add(add_failed_item)
+            db.session.commit()
+            return jsonify({"Message":"Part has been updated Successfully"}),200
+        else:
+            return jsonify({"Message":"No task assigned to this station"}), 404
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
 
 def update_work_status(data):
     try:
@@ -282,6 +310,7 @@ def notify_to_incharge_func(data):
         return jsonify({"Message":f"Notification sent to in-charge for Station ID :{station_id}"}), 200
     except Exception as e:
         db.session.rollback()
+        print(e)
         return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
 
 
@@ -333,3 +362,23 @@ def check_fpa_status(data):
     except Exception as e:
         db.session.rollback()
         return jsonify({'Error': f'Failed to fetch data: {e}'}), 500
+
+
+def get_reasons_for_items(data):
+    try:
+        floor_no=data.get('floor_no')
+        if floor_no:
+            exist_reasons= reasons.query.filter_by(floor_no=floor_no).all()
+            if exist_reasons:
+                reasons_data = [
+                {'reason_id': reasons.reason_id, 'reason': reasons.reason}
+                        for reasons in exist_reasons]
+                return jsonify({"reasons": reasons_data}), 200
+            else:
+                return jsonify({"Message": "No reasons found for the floor_no."}), 404
+        else:
+            return jsonify({"Message": "Please provide floor_no."}), 404
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'Error': f'Failed to fetch data: {e}'}), 500
+
