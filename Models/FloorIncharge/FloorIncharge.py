@@ -93,6 +93,25 @@ def operator_signup(data):
     except Exception as e:
         return jsonify({"Error in adding data":f"Some error occurred while adding the data to the database: {e}"}), 422
 
+def operator_change_password(data):
+    try:
+        employee_id = data.get('employee_id')
+        password = data.get('password')
+        
+    except:
+        return jsonify({"Error": "Username and Password Not Defined"})
+    
+    try:
+        user = Operator_creds.query.filter_by(employee_id=employee_id).first()
+        if user:
+            user.password = password or user.password
+            db.session.commit()
+            return jsonify({'Response:': "Operator Password updated successfully!"}), 201
+        else:
+            return jsonify( {"Response":"User does't exists."} ), 404
+    except Exception as e:
+        return jsonify({"Error in adding data":f"Some error occurred while adding the data to the database: {e}"}), 422
+
 def get_operator_details(data):
     try:
         employee_id = data.get("employee_id")
@@ -368,7 +387,7 @@ def get_parameter(data):
                         {'parameter_name': parameters.parameter_name, 'parameter_no': parameters.parameter_no, 'min':parameters.min, 'max':parameters.max, 'unit':parameters.unit, 'FPA_status':parameters.FPA_status, 'readings_is_available':parameters.readings_is_available}
                         for parameters in exist_parameters]
                 # print(process_data)
-                    return jsonify({"data: ": parameters_data}), 200
+                    return jsonify({"data": parameters_data}), 200
                 else:
                     return jsonify({'Message': 'No parameters  available for this part and process'}), 404
             else:
@@ -1036,25 +1055,43 @@ def get_readings_for_chart(data):
     for entity in (results.items):
         date = str(entity.date)
         station_id = entity.station_id
+        shift = entity.shift
         
         if date in readings_data:
             pass
         else:
             readings_data[date]  = {}
-        if station_id in station_readings_data:
+        # if station_id in station_readings_data:
+        #     pass
+        # else:
+        #     station_readings_data[station_id] = []
+        
+        if station_id in readings_data[date]:
             pass
         else:
-            station_readings_data[station_id] = []
+            readings_data[date][station_id] = {}
+        
+        if shift in readings_data[date][station_id]:
+            pass
+        else:
+            readings_data[date][station_id][shift] = []
             
-        # station_readings_data[station_id].append(entity.station_id)
-        station_readings_data[station_id].append(entity.reading_1)
-        # station_readings_data[station_id].append(str(entity.reading_1_time))
-        station_readings_data[station_id].append(entity.reading_2)
-        station_readings_data[station_id].append(entity.reading_3)
-        station_readings_data[station_id].append(entity.reading_4)
-        station_readings_data[station_id].append(entity.reading_5)
-        # station_readings_data[station_id].append(str(entity.reading_5_time))
-        readings_data[date] = station_readings_data
+            readings_data[date][station_id][shift].extend([
+            entity.reading_1,
+            entity.reading_2,
+            entity.reading_3,
+            entity.reading_4,
+            entity.reading_5
+           ])
+        # # station_readings_data[station_id].append(entity.station_id)
+        # station_readings_data[station_id].append(entity.reading_1)
+        # # station_readings_data[station_id].append(str(entity.reading_1_time))
+        # station_readings_data[station_id].append(entity.reading_2)
+        # station_readings_data[station_id].append(entity.reading_3)
+        # station_readings_data[station_id].append(entity.reading_4)
+        # station_readings_data[station_id].append(entity.reading_5)
+        # # station_readings_data[station_id].append(str(entity.reading_5_time))
+        # readings_data[date] = station_readings_data
     return jsonify({"result": readings_data}), 200
     
     

@@ -17,7 +17,7 @@ from collections import Counter
 from Database.models import Operator_creds, floor_incharge_creds, work_assigned_to_operator, parts_info, processes_info, parameters_info, check_sheet_data, check_sheet_data_logs, work_assigned_to_operator_logs
 import pytz
 from Database.init_and_conf import db
-from Models.FloorIncharge.FloorIncharge import login, operator_signup, add_part, get_parts, update_part, add_process, get_processes, add_parameter, add_checksheet, stations_info, stations_current_status, refresh_data, free_stations_if_task_completed, disable_part, assign_task, update_processes, update_parameter, get_parameter, get_notification_info, get_floor_data, get_stations_previous_data, get_operator_details,add_stations, delete_notification, add_reason, get_reasons_for_items, delete_reason_for_items, get_readings_for_chart
+from Models.FloorIncharge.FloorIncharge import login, operator_signup, add_part, get_parts, update_part, add_process, get_processes, add_parameter, add_checksheet, stations_info, stations_current_status, refresh_data, free_stations_if_task_completed, disable_part, assign_task, update_processes, update_parameter, get_parameter, get_notification_info, get_floor_data, get_stations_previous_data, get_operator_details,add_stations, delete_notification, add_reason, get_reasons_for_items, delete_reason_for_items, get_readings_for_chart, operator_change_password
 from Config.token_handler import TokenRequirements
 
 FloorIncharge1=Blueprint('FloorIncharge', __name__)
@@ -153,6 +153,12 @@ def FloorIncharge(**kwargs):
 @FloorIncharge1.route("/floorincharge/operator/signup", methods=["POST"])
 def operator_signup_handler():
     return operator_signup(request.form)
+
+################################### Operator password reset API #######################################################
+@FloorIncharge1.route("/floorincharge/operator/change_password", methods=["POST"])
+@TokenRequirements.token_required
+def operator_change_password_handler():
+    return operator_change_password(request.form)
 
 ################################### Operator details API #######################################################
 @FloorIncharge1.route("/floorincharge/operator/details", methods=["POST"])
