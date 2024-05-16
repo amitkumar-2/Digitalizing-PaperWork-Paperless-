@@ -9,3 +9,14 @@ Werkzeug
 flask_migrate
 pyjwt
 pytz
+
+eventlet
+flask_cors
+flask_socketio
+apscheduler
+flask_sqlalchemy
+flask_migrate
+pyjwt
+boto3
+pymysql
+cryptography

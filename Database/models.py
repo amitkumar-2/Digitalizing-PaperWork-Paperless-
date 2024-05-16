@@ -343,8 +343,12 @@ class reading_params_logs(db.Model):
 ################################################## UCL and LCL table for params #######################################
 class params_ucl_lcl(db.Model):
     parameter_no = db.Column(db.String(length=60), primary_key=True)
-    UCL = db.Column(db.Float)
-    LCL = db.Column(db.Float)
+    USL = db.Column(db.Float)
+    LSL = db.Column(db.Float)
+    A2 = db.Column(db.Float)
+    D2 = db.Column(db.Float)
+    D3 = db.Column(db.Float)
+    D4 = db.Column(db.Float)
     time = db.Column(db.Time, default=datetime.now(pytz.timezone('Asia/Kolkata')).time())
     date = db.Column(db.Date, default=datetime.now(pytz.timezone('Asia/Kolkata')).date())
 

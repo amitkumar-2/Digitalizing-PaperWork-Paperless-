@@ -1,7 +1,7 @@
 from flask import request, jsonify, session, current_app
 import pytz
 from Database.init_and_conf import db
-from Database.models import floor_incharge_creds, Operator_creds, parts_info, processes_info, parameters_info, check_sheet_data, stations, work_assigned_to_operator, work_assigned_to_operator_logs, check_sheet, notify_to_incharge, check_sheet_data_logs, fpa_and_set_up_approved_records, fpa_and_set_up_approved_records_logs, reading_params, reading_params_logs, reasons
+from Database.models import floor_incharge_creds, Operator_creds, parts_info, processes_info, parameters_info, check_sheet_data, stations, work_assigned_to_operator, work_assigned_to_operator_logs, check_sheet, notify_to_incharge, check_sheet_data_logs, fpa_and_set_up_approved_records, fpa_and_set_up_approved_records_logs, reading_params, reading_params_logs, reasons, params_ucl_lcl
 # from handlers import create_tocken
 from Config.token_handler import TokenRequirements
 from datetime import datetime, timedelta
@@ -360,6 +360,15 @@ def add_parameter(data):
                 return jsonify({"Message": "This Parameters number already exists."}), 200
             
             else:
+                if readings_is_available:
+                    USL = data.get('USL')
+                    LSL = data.get('LSL')
+                    A2 = data.get('A2')
+                    D2 = data.get('D2')
+                    D3 = data.get('D3')
+                    D4 = data.get('D4')
+                    new_params_ucl_lcl = params_ucl_lcl(parameter_no=parameter_no, USL=USL, LSL=LSL, A2=A2, D2=D2, D3=D3, D4=D4)
+                    db.session.add(new_params_ucl_lcl)
                 new_process = parameters_info(parameter_name=parameter_name, parameter_no=parameter_no, process_no=process_no, belongs_to_part=belongs_to_part, min=min, max=max, unit=unit, FPA_status=FPA_status, added_by_owner=added_by_owner)
                 db.session.add(new_process)
                 db.session.commit()
@@ -1093,8 +1102,30 @@ def get_readings_for_chart(data):
         # # station_readings_data[station_id].append(str(entity.reading_5_time))
         # readings_data[date] = station_readings_data
     return jsonify({"result": readings_data}), 200
-    
-    
+
+def get_readings_values_of_param(data):
+    try:
+        parameter_no = data.get("parameter_no")
+        
+        params_response_value = {}
+        
+        param_const_values = params_ucl_lcl.query.filter_by(parameter_no=parameter_no).first()
+
+        if param_const_values:
+            params_response_value["parameter_no"] = param_const_values.parameter_no
+            params_response_value["USL"] = param_const_values.USL
+            params_response_value["LSL"] = param_const_values.LSL
+            params_response_value["A2"] = param_const_values.A2
+            params_response_value["D2"] = param_const_values.D2
+            params_response_value["D3"] = param_const_values.D3
+            params_response_value["D4"] = param_const_values.D4
+            
+            return jsonify({"Datas": params_response_value}), 200
+        else:
+            return jsonify({"Message": "This parameter has no readings constant value is available."}), 404
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
 
 
 def station_history(data):
