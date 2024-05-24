@@ -139,7 +139,7 @@ class work_assigned_to_operator(db.Model):
     # id = db.Column(db.Integer, autoincrement=True)
     employee_id = db.Column(db.String(length=20), nullable=False, unique=True)
     station_id = db.Column(db.String(length=15), primary_key=True, nullable=False)
-    part_no = db.Column(db.String(length=20), nullable=False)
+    part_no = db.Column(db.String(length=20), nullable=False, index=True)
     process_no = db.Column(db.String(length=20), nullable=False)
     start_shift_time = db.Column(db.Time, nullable=False, index=True)
     end_shift_time = db.Column(db.Time, nullable=False, index=True)
@@ -151,6 +151,8 @@ class work_assigned_to_operator(db.Model):
     passed = db.Column(db.Integer)
     filled = db.Column(db.Integer)
     failed = db.Column(db.Integer)
+    task_id = db.Column(db.Integer, index=True)
+    station_precedency = db.Column(db.Integer, nullable=False)
     time = db.Column(db.Time, default=datetime.now(pytz.timezone('Asia/Kolkata')).time())
     date = db.Column(db.Date, default=datetime.now(pytz.timezone('Asia/Kolkata')).date())
 
@@ -169,6 +171,7 @@ class work_assigned_to_operator_logs(db.Model):
     passed = db.Column(db.Integer)
     filled = db.Column(db.Integer)
     failed = db.Column(db.Integer)
+    station_precedency = db.Column(db.Integer, nullable=False)
     assigned_date = db.Column(db.Date, nullable=False, index=True)
     time = db.Column(db.Time, default=datetime.now(pytz.timezone('Asia/Kolkata')).time())
     logs_date = db.Column(db.Date, default=datetime.now(pytz.timezone('Asia/Kolkata')).date())
@@ -191,7 +194,8 @@ class  processes_info(db.Model):
     # id = db.Column(db.Integer, autoincrement=True)
     process_name = db.Column(db.String(length=220), nullable=False)
     process_no = db.Column(db.String(length=40), primary_key=True)
-    belongs_to_part = db.Column(db.String(length=20), nullable=False)
+    process_precedency =  db.Column(db.Integer, nullable=False)
+    belongs_to_part = db.Column(db.String(length=20), nullable=False, index=True)
     images_urls = db.Column(db.String(length=1200))
     required_skill_level = db.Column(db.Integer, default=0)
     added_by_owner = db.Column(db.String(30), nullable=False)
@@ -301,6 +305,8 @@ class check_sheet_data_logs(db.Model):
     status_datas = db.Column(db.String(length=1500))
     time = db.Column(db.Time, default=datetime.now(pytz.timezone('Asia/Kolkata')).time())
     date = db.Column(db.Date, default=datetime.now(pytz.timezone('Asia/Kolkata')).date())
+    log_time = db.Column(db.Time, default=datetime.now(pytz.timezone('Asia/Kolkata')).time())
+    log_date = db.Column(db.Date, default=datetime.now(pytz.timezone('Asia/Kolkata')).date())
 
 
 

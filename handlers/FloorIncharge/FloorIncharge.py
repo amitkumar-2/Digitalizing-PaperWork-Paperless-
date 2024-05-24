@@ -17,7 +17,7 @@ from collections import Counter
 from Database.models import Operator_creds, floor_incharge_creds, work_assigned_to_operator, parts_info, processes_info, parameters_info, check_sheet_data, check_sheet_data_logs, work_assigned_to_operator_logs
 import pytz
 from Database.init_and_conf import db
-from Models.FloorIncharge.FloorIncharge import login, operator_signup, add_part, get_parts, update_part, add_process, get_processes, add_parameter, add_checksheet, stations_info, stations_current_status, refresh_data, free_stations_if_task_completed, disable_part, assign_task, update_processes, update_parameter, get_parameter, get_notification_info, get_floor_data, get_stations_previous_data, get_operator_details,add_stations, delete_notification, add_reason, get_reasons_for_items, delete_reason_for_items, get_readings_for_chart, operator_change_password,get_readings_values_of_param
+from Models.FloorIncharge.FloorIncharge import login, operator_signup, add_part, get_parts, update_part, add_process, get_processes, add_parameter, add_checksheet, stations_info, stations_current_status, refresh_data, free_stations_if_task_completed, disable_part, assign_task, update_processes, update_parameter, get_parameter, get_notification_info, get_floor_data, get_stations_previous_data, get_operator_details,add_stations, delete_notification, add_reason, get_reasons_for_items, delete_reason_for_items, get_readings_for_chart, operator_change_password,get_readings_values_of_param, delete_part, delete_processes, delete_parameter, delete_task
 from Config.token_handler import TokenRequirements
 
 FloorIncharge1=Blueprint('FloorIncharge', __name__)
@@ -157,7 +157,7 @@ def operator_signup_handler():
 ################################### Operator password reset API #######################################################
 @FloorIncharge1.route("/floorincharge/operator/change_password", methods=["POST"])
 @TokenRequirements.token_required
-def operator_change_password_handler():
+def operator_change_password_handler(**kwargs):
     return operator_change_password(request.form)
 
 ################################### Operator details API #######################################################
@@ -203,9 +203,13 @@ def dashboard(**kwargs):
 
 ############ assign task to stations one by one using this api ###########################
 @FloorIncharge1.route("/floorincharge/assign_task", methods=['POST'])
-# @TokenRequirements.token_required
+@TokenRequirements.token_required
 def assign_task_handler(**kwargs):
     return assign_task(request.json)
+@FloorIncharge1.route("/floorincharge/delete_task", methods=['POST'])
+# @TokenRequirements.token_required
+def delete_task_handler(**kwargs):
+    return delete_task(request.json)
 
 
 ######################################## add the parts with their information ###########################################
@@ -225,7 +229,10 @@ def update_part_handler(**kwargs):
 @TokenRequirements.token_required
 def disable_part_handler(**kwargs):
     return disable_part(request.form)
-
+@FloorIncharge1.route("/floorincharge/delete_part", methods=[ 'GET', 'POST'])
+@TokenRequirements.token_required
+def delete_part_handler(**kwargs):
+    return delete_part(request.form)
 
 ########################################## add the process with their information ##########################################
 @FloorIncharge1.route("/floorincharge/add_process", methods=['POST'])
@@ -242,6 +249,10 @@ def get_processes_handler(**kwargs):
 def update_processes_handler(**kwargs):
     return update_processes(request.form)
 
+@FloorIncharge1.route("/floorincharge/delete_processes", methods=[ 'GET', 'POST'])
+@TokenRequirements.token_required
+def delete_processes_handler(**kwargs):
+    return delete_processes(request.form)
 
 ######################################## add the parameters of processes with their information ###############################
 @FloorIncharge1.route("/floorincharge/add_parameter", methods=['POST'])
@@ -258,6 +269,11 @@ def get_parameter_handler(**kwargs):
 @TokenRequirements.token_required
 def update_parameter_handler(**kwargs):
     return update_parameter(request.form)
+
+@FloorIncharge1.route("/floorincharge/delete_parameter", methods=['POST'])
+@TokenRequirements.token_required
+def delete_parameter_handler(**kwargs):
+    return delete_parameter(request.form)
 
 
 #################################################### check sheet with all information and logs  ##############################

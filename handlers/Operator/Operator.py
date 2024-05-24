@@ -123,7 +123,7 @@ def add_fpa_data_handler(**kwargs):
     return add_fpa_data(request.form)
 
 
-@Operator1.route("/operator/get_fpa_status", methods=["POST"])
+@Operator1.route("/operator/check_fpa_status", methods=["POST"])
 @TokenRequirements.token_required
 def check_fpa_status_handler(**kwargs):
     return check_fpa_status(request.form)

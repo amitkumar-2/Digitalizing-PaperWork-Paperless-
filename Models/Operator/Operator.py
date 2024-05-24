@@ -19,7 +19,7 @@ def operator_login(data):
             if user.password == password:
                 session['logged_in'] = True
                 token = TokenRequirements.create_token(employee_id=employee_id, mobile_no = user.mobile, secret_key=current_app.config['SECRET_KEY'])
-                return jsonify({'Response': 'Operator login successfull!', 'token': f'{token}', 'employee_id':f'{user.employee_id}', 'fName': f'{user.fName}', 'lName': f'{user.lName}', 'skill':f'{user.skill_level}'}), 200
+                return jsonify({'Response': 'Operator login successfull!', 'token': f'{token}', 'employee_id':f'{user.employee_id}', 'fName': f'{user.fName}', 'lName': f'{user.lName}', 'skill':f'{user.skill_level}', 'password':f'{user.password}', 'mobile':f'{user.mobile}', 'email':f'{user.email}', 'dob':f'{user.dob}'}), 200
             else:
                 return jsonify({'Response:': 'Authentication Failed!'}), 401
         else:
@@ -50,7 +50,9 @@ def get_task(data):
                         # 'left_for_rework':get_task_data.left_for_rework,
                         'passed':get_task_data.passed,
                         'filled':get_task_data.filled,
-                        'failed':get_task_data.failed
+                        'failed':get_task_data.failed,
+                        'temp_task_id': get_task_data.task_id,
+                        'station_precidency': get_task_data.station_precedency
                         # Add other relevant fields here
                     }
                     
@@ -136,8 +138,10 @@ def add_checksheet_data(data):
         oprtr_employee_id = data.get('oprtr_employee_id')
         flrInchr_employee_id = data.get('flrInchr_employee_id')
         status_datas = data.get('status_datas')
+        current_date = datetime.now().date()
+        current_time = datetime.now().time()
         
-        add_checksheet_data = check_sheet_data(oprtr_employee_id=oprtr_employee_id, flrInchr_employee_id=flrInchr_employee_id, status_datas=status_datas, station_id=station_id)
+        add_checksheet_data = check_sheet_data(oprtr_employee_id=oprtr_employee_id, flrInchr_employee_id=flrInchr_employee_id, status_datas=status_datas, station_id=station_id, date=current_date, time=current_time)
         db.session.add(add_checksheet_data)
         db.session.commit()
         return jsonify({"Message": "Check sheet data submited successfully"}), 200
@@ -205,6 +209,52 @@ def add_fpa_data(data):
     except Exception as e:
         db.session.rollback()
         print("###########", f'Block is not able to execute successfully {e}')
+        return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
+
+def check_fpa_status(data):
+    try:
+        precedency_no = (int(data.get('precedency_no')) - 1)
+        part_no = data.get('part_no')
+        temp_task_id = data.get('temp_task_id')
+        
+        previous_station_fpa_data = {}
+        
+        get_part_stations = work_assigned_to_operator.query.filter_by(part_no=part_no, task_id=temp_task_id).all()
+        if get_part_stations:
+            for station in get_part_stations:
+                if station.station_precedency == precedency_no:
+                    before_station_fpa_status = fpa_and_set_up_approved_records.query.filter_by(station_id=station.station_id).first()
+                    if before_station_fpa_status:
+                        start_shift_1_parameters_values = None
+                        start_shift_2_parameters_values = None
+                        end_shift_1_parameters_values = None
+                        end_shift_2_parameters_values = None
+                        
+                        if before_station_fpa_status.start_shift_1_time:
+                            start_shift_1_parameters_values = True
+                            print(start_shift_1_parameters_values)
+                        if before_station_fpa_status.start_shift_2_time:
+                            start_shift_2_parameters_values = True
+                        if before_station_fpa_status.end_shift_1_time:
+                            end_shift_1_parameters_values = True
+                        if before_station_fpa_status.end_shift_2_time:
+                            end_shift_2_parameters_values = True
+                        previous_station_fpa_data["station_id"] = before_station_fpa_status.station_id
+                        previous_station_fpa_data["start_shift_1_parameters_values"] = start_shift_1_parameters_values or before_station_fpa_status.start_shift_1_parameters_values
+                        previous_station_fpa_data["start_shift_2_parameters_values"] = start_shift_2_parameters_values or before_station_fpa_status.start_shift_2_parameters_values
+                        previous_station_fpa_data["end_shift_1_parameters_values"] = end_shift_1_parameters_values or before_station_fpa_status.end_shift_1_parameters_values
+                        previous_station_fpa_data["end_shift_2_parameters_values"] = end_shift_2_parameters_values or before_station_fpa_status.end_shift_2_parameters_values
+                        return jsonify({"before_station_fpa_status": previous_station_fpa_data}), 200
+                    else:
+                        return jsonify({"before_station_fpa_status": f"FPA is not yet started or data not found for station {station.station_id}"}), 444 # Custom status code
+                else:
+                    continue
+                    # return jsonify({"Message": "This is the fpa test for the first station"}), 210 # custom status code
+            return jsonify({"Message": "This is the fpa test for the first station"}), 210 # custom status code
+        else:
+            return jsonify({"Message": "Any how task is not assign for this part or task id is not exist."}), 404
+    except Exception as e:
+        db.session.rollback()
         return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
 
 def add_reading(data):
@@ -331,37 +381,37 @@ def notify_to_incharge_func(data):
 
 
 
-def check_fpa_status(data):
-    try:
-        station_id=data.get('station_id')
-        # Fetch all station_ids for the given floor_no
-        is_not_approved = False
-        station_data = work_assigned_to_operator.query.filter_by(station_id=station_id).first()
-        if station_data:
-            if (station_data.check_fpa_status_at + 2) < station_data.passed:
-                station_data.check_fpa_status_at = station_data.passed
-                db.session.commit()
-            else:
-                pass
+# def check_fpa_status(data):
+#     try:
+#         station_id=data.get('station_id')
+#         # Fetch all station_ids for the given floor_no
+#         is_not_approved = False
+#         station_data = work_assigned_to_operator.query.filter_by(station_id=station_id).first()
+#         if station_data:
+#             if (station_data.check_fpa_status_at + 2) < station_data.passed:
+#                 station_data.check_fpa_status_at = station_data.passed
+#                 db.session.commit()
+#             else:
+#                 pass
             
-            fpa_status_data = work_assigned_to_operator.query.filter_by(station_id=station_id).first()
-            if (fpa_status_data.check_fpa_status_at+2) <= fpa_status_data.passed:
-                is_not_approved = True
-            elif (fpa_status_data.check_fpa_status_at+2) >= fpa_status_data.passed:
-                fpa_status_data.passed = data.get('passed') or fpa_status_data.passed
-                fpa_status_data.failed = data.get('failed') or fpa_status_data.failed
+#             fpa_status_data = work_assigned_to_operator.query.filter_by(station_id=station_id).first()
+#             if (fpa_status_data.check_fpa_status_at+2) <= fpa_status_data.passed:
+#                 is_not_approved = True
+#             elif (fpa_status_data.check_fpa_status_at+2) >= fpa_status_data.passed:
+#                 fpa_status_data.passed = data.get('passed') or fpa_status_data.passed
+#                 fpa_status_data.failed = data.get('failed') or fpa_status_data.failed
                 
-                db.session.commit()
-                return jsonify({"Message": "FPA Status updated Successfully"}), 201
-            # else:
-            #     return jsonify({"Message":"Part has been updated Successfully"}),200
+#                 db.session.commit()
+#                 return jsonify({"Message": "FPA Status updated Successfully"}), 201
+#             # else:
+#             #     return jsonify({"Message":"Part has been updated Successfully"}),200
             
-            return jsonify({" For this station_id is_approved value is":is_not_approved}),200
-        else:
-            return jsonify({"Message": "No stations found for the station_id."}), 404
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'Error': f'Failed to fetch data: {e}'}), 500
+#             return jsonify({" For this station_id is_approved value is":is_not_approved}),200
+#         else:
+#             return jsonify({"Message": "No stations found for the station_id."}), 404
+#     except Exception as e:
+#         db.session.rollback()
+#         return jsonify({'Error': f'Failed to fetch data: {e}'}), 500
 
 
 def get_reasons_for_items(data):
