@@ -217,7 +217,7 @@ def delete_part(data):
             get_part_processes = processes_info.query.filter_by(belongs_to_part=part_no).all()
             if get_part_processes:
                 for process in get_part_processes:
-                    get_part_parameters = parameters_info.query.filter_by(process.process_no).all()
+                    get_part_parameters = parameters_info.query.filter_by(process_no=process.process_no).all()
                     if get_part_parameters:
                         return jsonify({"Message":"You can only disable this part"}), 403
                 db.session.delete(get_part_processes)
@@ -418,6 +418,7 @@ def delete_processes(data):
 
 def add_parameter(data):
     try:
+        print("###################################")
         parameter_name = data.get('parameter_name')
         parameter_no = data.get('parameter_no')
         process_no = data.get('process_no')
@@ -428,7 +429,7 @@ def add_parameter(data):
         unit = data.get('unit')
         
         FPA_status = data.get('FPA_status')
-        FPA_status = bool(FPA_status)
+        FPA_status = bool(int(FPA_status))
         
         readings_is_available = data.get('readings_is_available')
         readings_is_available = bool(readings_is_available)
@@ -518,9 +519,12 @@ def delete_parameter(data):
         
         get_parameter_data = parameters_info.query.filter_by(parameter_no=parameter_no).first()
         if get_parameter_data:
+            if get_parameter_data.readings_is_available == 1:
+                get_reading_parameter = params_ucl_lcl.query.filter_by(parameter_no=parameter_no).first()
+                db.session.delete(get_reading_parameter)
             db.session.delete(get_parameter_data)
             db.session.commit()
-            
+            return jsonify( {'Message':'This parameter has been deleted successfully.'} ), 200
         else:
             return jsonify( {'Message':'This parameter is not found or already deleted.'} ), 404
     except Exception as e:
@@ -672,10 +676,13 @@ def assign_task(data):
 
 def delete_task(data):
     try:
+        print("#####################")
         task_id = data.get('task_id')
+        print(task_id)
         get_task = work_assigned_to_operator.query.filter_by(task_id=task_id).all()
         if get_task:
-            db.session.delete(get_task)
+            for entity in get_task:
+                db.session.delete(entity)
             db.session.commit()
             return jsonify({'Message': f"Task_id {task_id} is deleted."}), 200
         else:
@@ -717,6 +724,14 @@ def stations_info(data):
         db.session.rollback()
         return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
 
+def station_current_info(data):
+    try:
+        station_id = data.get('station_id')
+        work_progress_data = work_assigned_to_operator.query.filter_by(station_id=station_id).first()
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
 
 def stations_current_status():
     try:

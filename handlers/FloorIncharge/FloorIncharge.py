@@ -207,9 +207,9 @@ def dashboard(**kwargs):
 def assign_task_handler(**kwargs):
     return assign_task(request.json)
 @FloorIncharge1.route("/floorincharge/delete_task", methods=['POST'])
-# @TokenRequirements.token_required
+@TokenRequirements.token_required
 def delete_task_handler(**kwargs):
-    return delete_task(request.json)
+    return delete_task(request.form)
 
 
 ######################################## add the parts with their information ###########################################
