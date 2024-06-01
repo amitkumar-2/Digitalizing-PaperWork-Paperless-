@@ -47,6 +47,10 @@ class Operator_creds(db.Model):
     skill_level = db.Column(db.String(length=10)) # 0 - beginner
     dob = db.Column(db.Date)
     mobile = db.Column(db.String(length=14),unique=True)
+    station_id = db.Column(db.String(length=25), index=True)
+    shift_A = db.Column(db.Boolean, default=False)
+    shift_B = db.Column(db.Boolean, default=False)
+    shift_C = db.Column(db.Boolean, default=False)
     email = db.Column(db.String(length=80),unique=True)
     password = db.Column(db.String(length=80), nullable=False)
 
@@ -151,7 +155,7 @@ class work_assigned_to_operator(db.Model):
     passed = db.Column(db.Integer)
     filled = db.Column(db.Integer)
     failed = db.Column(db.Integer)
-    task_id = db.Column(db.Integer, index=True)
+    task_id = db.Column(db.String(length=30), index=True)
     station_precedency = db.Column(db.Integer, nullable=False)
     time = db.Column(db.Time, default=datetime.now(pytz.timezone('Asia/Kolkata')).time())
     date = db.Column(db.Date, default=datetime.now(pytz.timezone('Asia/Kolkata')).date())
@@ -199,6 +203,9 @@ class  processes_info(db.Model):
     images_urls = db.Column(db.String(length=1200))
     required_skill_level = db.Column(db.Integer, default=0)
     added_by_owner = db.Column(db.String(30), nullable=False)
+    station_id = db.Column(db.String(length=25))
+    shift = db.Column(db.String(length=2))
+    avg_minutes_to_complete = db.Column(db.String(length=3))
     time = db.Column(db.Time, default=datetime.now(pytz.timezone('Asia/Kolkata')).time())
     date = db.Column(db.Date, default=datetime.now(pytz.timezone('Asia/Kolkata')).date())
 

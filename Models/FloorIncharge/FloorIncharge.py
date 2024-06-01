@@ -78,6 +78,22 @@ def operator_signup(data):
         mobile = data.get('mobile')
         email =data.get('email')
         password = data.get('password')
+        try:
+            station_id = data.get('station_id')
+        except:
+            station_id = None
+        try:
+            shift_A = data.get('shift_A')
+        except:
+            shift_A = False
+        try:
+            shift_B = data.get('shift_B')
+        except:
+            shift_B = False
+        try:
+            shift_C = data.get('shift_C')
+        except:
+            shift_C = False
         
     except:
         return jsonify({"Error": "Username and Password Not Defined"})
@@ -85,12 +101,40 @@ def operator_signup(data):
     try:
         user = Operator_creds.query.filter_by(employee_id=employee_id).first()
         if user is None:
-            add_user = Operator_creds(employee_id=employee_id, fName=fName, mName=mName, lName=lName, skill_level=skill_level, dob=dob, mobile=mobile, email=email, password=password)
+            add_user = Operator_creds(employee_id=employee_id, fName=fName, mName=mName, lName=lName, skill_level=skill_level, dob=dob, mobile=mobile, email=email, password=password, shift_A=shift_A, shift_B=shift_B, shift_C=shift_C, station_id=station_id)
             db.session.add(add_user)
             db.session.commit()
             return jsonify({'Response': "Operator User added successfully!"}), 201
         else:
             return jsonify( {"Response":"User already exists."} ), 200
+    except Exception as e:
+        return jsonify({"Error in adding data":f"Some error occurred while adding the data to the database: {e}"}), 422
+
+def operator_update(data):
+    try:
+        employee_id = data.get('employee_id')
+    except:
+        return jsonify({"Error": "Username and Password Not Defined"})
+    
+    station_id = data.get('station_id')
+    shift_A = bool(int(data.get('shift_A')))
+    print(type(shift_A))
+    shift_B = bool(int(data.get('shift_B')))
+    print(type(shift_B))
+    shift_C = bool(int(data.get('shift_C')))
+    
+    try:
+        user = Operator_creds.query.filter_by(employee_id=employee_id).first()
+        print(user)
+        if user:
+            user.station_id = station_id or user.station_id
+            user.shift_A = shift_A or user.shift_A
+            user.shift_B = shift_B or user.shift_B
+            user.shift_C = shift_C or user.shift_C
+            db.session.commit()
+            return jsonify({'Response': "Operator Data updated successfully!"}), 201
+        else:
+            return jsonify( {"Response":"User does't exists."} ), 404
     except Exception as e:
         return jsonify({"Error in adding data":f"Some error occurred while adding the data to the database: {e}"}), 422
 
@@ -1127,6 +1171,43 @@ def  get_stations_previous_data(data):
     except Exception as e:
         db.session.rollback()
         return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
+
+def operator_of_station_shift(data):
+    try:
+        datas = {}
+        for station in data:
+            station_id = station.get("station_id")
+            employees = Operator_creds.query.filter_by(station_id=station_id).all()
+            if employees:
+                for employee in employees:
+                    shift = station.get('shift')
+                    if shift == "A":
+                        if employee.shift_A:
+                            if station_id not in datas:
+                                datas[station_id] = {}
+                            if "A" not in datas[station_id]:
+                                datas[station_id]["A"] = []
+                            datas[station_id]["A"].append(employee.employee_id)
+                    elif shift == "B":
+                        if employee.shift_B:
+                            if station_id not in datas:
+                                datas[station_id] = {}
+                            if "B" not in datas[station_id]:
+                                datas[station_id]["B"] = []
+                            datas[station_id]["B"].append(employee.employee_id)
+                    else:
+                        if employee.shift_C:
+                            if station_id not in datas:
+                                datas[station_id] = {}
+                            if "C" not in datas[station_id]:
+                                datas[station_id]["C"] = []
+                            datas[station_id]["C"].append(employee.employee_id)
+                    
+                return jsonify({"Data":f"{datas}"}), 200
+            else:
+                return jsonify({"Message":f"No employees assigned to this station."}), 406
+    except Exception as e:
+        return jsonify({"Error in getting datas":f"Some error occurred while getting datas from the database: {e}"}), 422
 
 ################################ failed items reason functions ##############################
 def add_reason(data):

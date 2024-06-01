@@ -17,7 +17,7 @@ from collections import Counter
 from Database.models import Operator_creds, floor_incharge_creds, work_assigned_to_operator, parts_info, processes_info, parameters_info, check_sheet_data, check_sheet_data_logs, work_assigned_to_operator_logs
 import pytz
 from Database.init_and_conf import db
-from Models.FloorIncharge.FloorIncharge import login, operator_signup, add_part, get_parts, update_part, add_process, get_processes, add_parameter, add_checksheet, stations_info, stations_current_status, refresh_data, free_stations_if_task_completed, disable_part, assign_task, update_processes, update_parameter, get_parameter, get_notification_info, get_floor_data, get_stations_previous_data, get_operator_details,add_stations, delete_notification, add_reason, get_reasons_for_items, delete_reason_for_items, get_readings_for_chart, operator_change_password,get_readings_values_of_param, delete_part, delete_processes, delete_parameter, delete_task
+from Models.FloorIncharge.FloorIncharge import login, operator_signup, add_part, get_parts, update_part, add_process, get_processes, add_parameter, add_checksheet, stations_info, stations_current_status, refresh_data, free_stations_if_task_completed, disable_part, assign_task, update_processes, update_parameter, get_parameter, get_notification_info, get_floor_data, get_stations_previous_data, get_operator_details,add_stations, delete_notification, add_reason, get_reasons_for_items, delete_reason_for_items, get_readings_for_chart, operator_change_password,get_readings_values_of_param, delete_part, delete_processes, delete_parameter, delete_task, operator_update, operator_of_station_shift
 from Config.token_handler import TokenRequirements
 
 FloorIncharge1=Blueprint('FloorIncharge', __name__)
@@ -153,6 +153,11 @@ def FloorIncharge(**kwargs):
 @FloorIncharge1.route("/floorincharge/operator/signup", methods=["POST"])
 def operator_signup_handler():
     return operator_signup(request.form)
+
+################################### Operator signup API #######################################################
+@FloorIncharge1.route("/floorincharge/operator/update", methods=["POST"])
+def operator_update_handler():
+    return operator_update(request.form)
 
 ################################### Operator password reset API #######################################################
 @FloorIncharge1.route("/floorincharge/operator/change_password", methods=["POST"])
@@ -355,6 +360,14 @@ def delete_notification_handler(**kwargs):
 @TokenRequirements.token_required
 def get_stations_previous_data_handler(**kwargs):
     return get_stations_previous_data(request.form)
+
+############################################ get operator according to sation and shift #################################
+@FloorIncharge1.route("/floorincharge/operator_of_station_shift", methods=['POST'])
+@TokenRequirements.token_required
+def operator_of_station_shift_handler(**kwargs):
+    return operator_of_station_shift(request.json)
+
+
 
 ########################################## add resons for floor ########################################
 @FloorIncharge1.route("/floorincharge/add_reason", methods=['POST'])
