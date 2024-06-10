@@ -20,6 +20,7 @@ from handlers import create_app
 app=create_app()
 CORS(app, origins=["*"], supports_credentials=True)
 
+app.config['UPLOAD_FOLDER'] = 'uploads/images/'
 # Add database
 app.config['SQLALCHEMY_DATABASE_URI']=DevConfig.SQLALCHEMY_DATABASE_URI
 # Secret Key

@@ -1,14 +1,15 @@
-from flask import request, jsonify, session, current_app
+from flask import request, jsonify, session, current_app, send_from_directory, url_for
 import pytz
 from urllib.parse import urlparse
 from Database.init_and_conf import db
-from Database.models import floor_incharge_creds, Operator_creds, parts_info, processes_info, parameters_info, check_sheet_data, stations, work_assigned_to_operator, work_assigned_to_operator_logs, check_sheet, notify_to_incharge, check_sheet_data_logs, fpa_and_set_up_approved_records, fpa_and_set_up_approved_records_logs, reading_params, reading_params_logs, reasons, params_ucl_lcl
+from Database.models import floor_incharge_creds, Operator_creds, parts_info, processes_info, parameters_info, check_sheet_data, stations, work_assigned_to_operator, work_assigned_to_operator_logs, check_sheet, notify_to_incharge, check_sheet_data_logs, fpa_and_set_up_approved_records, fpa_and_set_up_approved_records_logs, reading_params, reading_params_logs, reasons, params_ucl_lcl, floor_contant_values
 # from handlers import create_tocken
 from Config.token_handler import TokenRequirements
 from datetime import datetime, timedelta
 from Services.AWS_S3 import return_s3_client
 from Config.creds import BaseConfig
-# from os import path
+from os import path, makedirs, getcwd
+from werkzeug.utils import secure_filename
 
 def signup():
     try:
@@ -281,6 +282,8 @@ def delete_part(data):
 
 def add_process(data, files):
     try:
+        # ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+        UPLOAD_FOLDER = 'uploads/images/'
         process_name = data.get('process_name')
         if len(process_name) <= 0:
             return  jsonify({"error":"Part name cannot be empty"}),406
@@ -298,7 +301,9 @@ def add_process(data, files):
             return  jsonify({"error":"Part name cannot be empty"}),406
         files = files.getlist('file')
         
-        s3_client = return_s3_client()
+        # s3_client = return_s3_client()
+        if not path.exists(UPLOAD_FOLDER):
+            makedirs(UPLOAD_FOLDER)
         
 
         exist_part_no = parts_info.query.filter_by(part_no=belongs_to_part).first()
@@ -314,15 +319,22 @@ def add_process(data, files):
                 files_urls = []
                 if files:
                     for file in files:
-                        file_path = f"{belongs_to_part}/{file.filename}"
-                        print(file_path)
-                        s3_client.upload_fileobj(
-                            file,
-                            BaseConfig.AWS_S3_BUCKET,
-                            file_path)
-
-                        files_urls.append(f'https://{BaseConfig.AWS_S3_BUCKET}.s3.{BaseConfig.AWS_S3_REGION}.amazonaws.com/{file_path}')
+                        filename = secure_filename(file.filename)
+                        file.save(path.join(UPLOAD_FOLDER, filename))
+                        file_url = url_for('FloorIncharge.uploaded_file_handler', filename=filename, _external=True)
+                        files_urls.append(file_url)
                         urls_str = ', '.join(files_urls)
+                    
+                    # for file in files:
+                    #     file_path = f"{belongs_to_part}/{file.filename}"
+                    #     print(file_path)
+                    #     s3_client.upload_fileobj(
+                    #         file,
+                    #         BaseConfig.AWS_S3_BUCKET,
+                    #         file_path)
+
+                    #     files_urls.append(f'https://{BaseConfig.AWS_S3_BUCKET}.s3.{BaseConfig.AWS_S3_REGION}.amazonaws.com/{file_path}')
+                    #     urls_str = ', '.join(files_urls)
                         # print(urls_str)
                     
                 else:
@@ -340,6 +352,17 @@ def add_process(data, files):
         db.session.rollback()
         return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
 
+# @app.route('/uploads/<filename>')
+def uploaded_file(filename):
+    UPLOAD_FOLDER = f'{getcwd()}/uploads/images/'
+    try:
+        file_path = path.join(UPLOAD_FOLDER, filename)
+        print(f'Attempting to serve file from: {file_path}')
+        return send_from_directory(UPLOAD_FOLDER, filename)
+    except Exception as e:
+        print(f'Error: {e}')
+        return jsonify({"error": "File not found"}), 404
+
 def get_processes(data):
     """Returns list of available parts"""
     try:
@@ -350,7 +373,7 @@ def get_processes(data):
             if processes:
                 print(processes[0].process_name)
                 process_data = [
-                    {'process_name': process.process_name, 'process_no': process.process_no, 'process_precedency': process.process_precedency, 'skill_level': process.required_skill_level}
+                    {'process_name': process.process_name, 'process_no': process.process_no, 'process_precedency': process.process_precedency, 'skill_level': process.required_skill_level, 'Cycle_Time_secs': process.Cycle_Time_secs}
                     for process in processes
                 ]
                 # print(process_data)
@@ -489,11 +512,7 @@ def add_parameter(data):
                 if readings_is_available:
                     USL = data.get('USL')
                     LSL = data.get('LSL')
-                    A2 = data.get('A2')
-                    D2 = data.get('D2')
-                    D3 = data.get('D3')
-                    D4 = data.get('D4')
-                    new_params_ucl_lcl = params_ucl_lcl(parameter_no=parameter_no, USL=USL, LSL=LSL, A2=A2, D2=D2, D3=D3, D4=D4)
+                    new_params_ucl_lcl = params_ucl_lcl(parameter_no=parameter_no, USL=USL, LSL=LSL)
                     db.session.add(new_params_ucl_lcl)
                 new_process = parameters_info(parameter_name=parameter_name, parameter_no=parameter_no, process_no=process_no, belongs_to_part=belongs_to_part, min=min, max=max, unit=unit, FPA_status=FPA_status, added_by_owner=added_by_owner, readings_is_available=readings_is_available)
                 db.session.add(new_process)
@@ -674,14 +693,15 @@ def assign_task(data):
             # if get_temp_task_id:
             #     return jsonify({'Message': 'This task id is already assigned'}), 409
             
-            past_shift_of_station = work_assigned_to_operator_logs.query.filter_by(station_id=station_id, assigned_date=current_date).first()
+            past_shift_of_station = work_assigned_to_operator_logs.query.filter_by(station_id=station_id, assigned_date=current_date).all()
             if past_shift_of_station:
-                if shift == past_shift_of_station.shift:
-                    print("##printing shift", (past_shift_of_station.shift))
-                    last_shift_on_these_stations[past_shift_of_station.station_id] = shift
-                    db.session.rollback()
-                    return jsonify({"last_shift_on_these_stations": last_shift_on_these_stations}), 403
-                    # continue
+                for entity_past_shift_of_station in past_shift_of_station:
+                    print("##printing shift", (entity_past_shift_of_station.shift), shift)
+                    if shift == entity_past_shift_of_station.shift:
+                        last_shift_on_these_stations[entity_past_shift_of_station.station_id] = shift
+                        db.session.rollback()
+                        return jsonify({"last_shift_on_these_stations": last_shift_on_these_stations}), 403
+                        # continue
             
             # date = datetime.now().date()
             employee_data = work_assigned_to_operator.query.filter_by(employee_id=employee_id).first()
@@ -1001,6 +1021,7 @@ def get_notification_info(data):
                 "station_id": notification.station_id,
                 "csp_name": csp_name,
                 "csp_id": notification.csp_id,
+                "approved_status": notification.approved_status,
                 "created_date": str(notification.created_date),
                 "created_time": str(notification.created_time)
             })
@@ -1010,6 +1031,20 @@ def get_notification_info(data):
         else:
             return jsonify({"Message": "No Notifications Found"}), 404
         
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
+
+def approve_csp(data):
+    try:
+        notification_id = data.get("notification_id")
+        notification = notify_to_incharge.query.filter_by(notification_id=notification_id).first()
+        if notification:
+            notification.approved_status = True
+            db.session.commit()
+            return jsonify({"Message": "Approved Successfully..."}), 200
+        else:
+            return jsonify({"Message": "No Notifications Found"}), 404
     except Exception as e:
         db.session.rollback()
         return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
@@ -1175,6 +1210,7 @@ def  get_stations_previous_data(data):
 def operator_of_station_shift(data):
     try:
         datas = {}
+        stations_without_operator = []
         for station in data:
             station_id = station.get("station_id")
             employees = Operator_creds.query.filter_by(station_id=station_id).all()
@@ -1203,9 +1239,10 @@ def operator_of_station_shift(data):
                                 datas[station_id]["C"] = []
                             datas[station_id]["C"].append(employee.employee_id)
                     
-                return jsonify({"Data":f"{datas}"}), 200
             else:
-                return jsonify({"Message":f"No employees assigned to this station."}), 406
+                stations_without_operator.append(station_id)
+                # return jsonify({"Message":f"No employees assigned to this station."}), 406
+        return jsonify({"Data":f"{datas}", "stations_without_operator": f'{stations_without_operator}'}), 200
     except Exception as e:
         return jsonify({"Error in getting datas":f"Some error occurred while getting datas from the database: {e}"}), 422
 
@@ -1337,19 +1374,21 @@ def get_readings_for_chart(data):
 def get_readings_values_of_param(data):
     try:
         parameter_no = data.get("parameter_no")
+        floor_no = data.get("floor_no")
         
         params_response_value = {}
         
         param_const_values = params_ucl_lcl.query.filter_by(parameter_no=parameter_no).first()
+        floor_param_const_values = floor_contant_values.query.filter_by(floor_no=floor_no).first()
 
         if param_const_values:
             params_response_value["parameter_no"] = param_const_values.parameter_no
             params_response_value["USL"] = param_const_values.USL
             params_response_value["LSL"] = param_const_values.LSL
-            params_response_value["A2"] = param_const_values.A2
-            params_response_value["D2"] = param_const_values.D2
-            params_response_value["D3"] = param_const_values.D3
-            params_response_value["D4"] = param_const_values.D4
+            params_response_value["A2"] = floor_param_const_values.A2
+            params_response_value["D2"] = floor_param_const_values.D2
+            params_response_value["D3"] = floor_param_const_values.D3
+            params_response_value["D4"] = floor_param_const_values.D4
             
             return jsonify({"Datas": params_response_value}), 200
         else:

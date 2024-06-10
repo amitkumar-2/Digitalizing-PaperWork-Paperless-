@@ -213,15 +213,29 @@ def add_fpa_data(data):
 
 def check_fpa_status(data):
     try:
-        precedency_no = (int(data.get('precedency_no')) - 1)
+        precedency_no = int(data.get('precedency_no'))
+        if precedency_no == 1:
+            precedency_no = -1
+        else:
+            precedency_no = (int(data.get('precedency_no')) - 1)
         part_no = data.get('part_no')
         temp_task_id = data.get('temp_task_id')
+        fpa_check_count = int(data.get('fpa_check_count'))
+        if (fpa_check_count == 2 or fpa_check_count == 1) and precedency_no == -1:
+            precedency_no = 0
+        
+        if fpa_check_count == 2:
+            precedency_no = 0
         
         previous_station_fpa_data = {}
         
         get_part_stations = work_assigned_to_operator.query.filter_by(part_no=part_no, task_id=temp_task_id).all()
         if get_part_stations:
             for station in get_part_stations:
+                if precedency_no == 0:
+                    for station in get_part_stations:
+                        if precedency_no < station.station_precedency:
+                            precedency_no = station.station_precedency
                 if station.station_precedency == precedency_no:
                     before_station_fpa_status = fpa_and_set_up_approved_records.query.filter_by(station_id=station.station_id).first()
                     if before_station_fpa_status:
@@ -246,7 +260,7 @@ def check_fpa_status(data):
                         previous_station_fpa_data["end_shift_2_parameters_values"] = end_shift_2_parameters_values or before_station_fpa_status.end_shift_2_parameters_values
                         return jsonify({"before_station_fpa_status": previous_station_fpa_data}), 200
                     else:
-                        return jsonify({"before_station_fpa_status": f"FPA is not yet started or data not found for station {station.station_id}"}), 444 # Custom status code
+                        return jsonify({"before_station_fpa_status": f"data not found for station {station.station_id}"}), 444 # Custom status code
                 else:
                     continue
                     # return jsonify({"Message": "This is the fpa test for the first station"}), 210 # custom status code
@@ -357,12 +371,25 @@ def notify_to_incharge_func(data):
         add_notification = notify_to_incharge(station_id=station_id, csp_id=csp_id, floor_no=floor_no, created_date=date, created_time=time)
         db.session.add(add_notification)
         db.session.commit()
-        return jsonify({"Message":f"Notification sent to in-charge for Station ID :{station_id}"}), 200
+        # Retrieve the primary key
+        notification_id = add_notification.notification_id
+        return jsonify({"Message":f"Notification sent to in-charge for Station ID :{station_id}", "Notification_id": f"{notification_id}"}), 200
     except Exception as e:
         db.session.rollback()
         print(e)
         return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
 
+def get_update_on_csp(data):
+    try:
+        notification_id = data.get("notification_id")
+        notification = notify_to_incharge.query.filter_by(notification_id=notification_id).first()
+        if notification:
+            approved_status = notification.approved_status
+            return jsonify({"Approved status": f"{approved_status}"}), 200
+        return jsonify({"Message": "This notification has been deleted or not found"}), 404
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
 
 # def check_fpa_status(data):
 #     try:
@@ -416,9 +443,9 @@ def notify_to_incharge_func(data):
 
 def get_reasons_for_items(data):
     try:
-        floor_no=data.get('floor_no')
-        if floor_no:
-            exist_reasons= reasons.query.filter_by(floor_no=floor_no).all()
+        process_no=data.get('process_no')
+        if process_no:
+            exist_reasons= reasons.query.filter_by(process_no=process_no).all()
             if exist_reasons:
                 reasons_data = [
                 {'reason_id': reasons.reason_id, 'reason': reasons.reason}

@@ -17,7 +17,7 @@ from collections import Counter
 from Database.models import Operator_creds, floor_incharge_creds, work_assigned_to_operator, parts_info, processes_info, parameters_info, check_sheet_data, check_sheet_data_logs, work_assigned_to_operator_logs
 import pytz
 from Database.init_and_conf import db
-from Models.FloorIncharge.FloorIncharge import login, operator_signup, add_part, get_parts, update_part, add_process, get_processes, add_parameter, add_checksheet, stations_info, stations_current_status, refresh_data, free_stations_if_task_completed, disable_part, assign_task, update_processes, update_parameter, get_parameter, get_notification_info, get_floor_data, get_stations_previous_data, get_operator_details,add_stations, delete_notification, add_reason, get_reasons_for_items, delete_reason_for_items, get_readings_for_chart, operator_change_password,get_readings_values_of_param, delete_part, delete_processes, delete_parameter, delete_task, operator_update, operator_of_station_shift
+from Models.FloorIncharge.FloorIncharge import login, operator_signup, add_part, get_parts, update_part, add_process, get_processes, add_parameter, add_checksheet, stations_info, stations_current_status, refresh_data, free_stations_if_task_completed, disable_part, assign_task, update_processes, update_parameter, get_parameter, get_notification_info, get_floor_data, get_stations_previous_data, get_operator_details,add_stations, delete_notification, add_reason, get_reasons_for_items, delete_reason_for_items, get_readings_for_chart, operator_change_password,get_readings_values_of_param, delete_part, delete_processes, delete_parameter, delete_task, operator_update, operator_of_station_shift, approve_csp, uploaded_file
 from Config.token_handler import TokenRequirements
 
 FloorIncharge1=Blueprint('FloorIncharge', __name__)
@@ -244,6 +244,12 @@ def delete_part_handler(**kwargs):
 @TokenRequirements.token_required
 def  add_process_handler(**kwargs):
     return add_process(request.form, request.files)
+
+@FloorIncharge1.route("/floorincharge/uploads/<filename>", methods=['POST'])
+@TokenRequirements.token_required
+def uploaded_file_handler(filename, **kwargs):
+    return uploaded_file(filename)
+
 @FloorIncharge1.route("/floorincharge/get_processes", methods=[ 'GET', 'POST'])
 @TokenRequirements.token_required
 def get_processes_handler(**kwargs):
@@ -341,6 +347,11 @@ def free_station(**kwargs):
 def get_notification_info_handler(**kwargs):
     return get_notification_info(request.form)
 
+############################################# get notification info ############################################
+@FloorIncharge1.route("/floorincharge/approve_notifications", methods=['POST'])
+@TokenRequirements.token_required
+def approve_csp_handler(**kwargs):
+    return approve_csp(request.form)
 
 ############################################# get notification info ############################################
 @FloorIncharge1.route("/floorincharge/delete_notification", methods=['POST'])

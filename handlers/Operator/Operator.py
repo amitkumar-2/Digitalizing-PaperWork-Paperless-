@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from functools import wraps
 from Database.models import Operator_creds, floor_incharge_creds, work_assigned_to_operator, fpa_and_set_up_approved_records, reading_params
 from Database.init_and_conf import db
-from Models.Operator.Operator import operator_login, add_fpa_data, add_reading, get_task, notify_to_incharge_func, check_fpa_status, update_work_status, add_checksheet_data, get_reasons_for_items, add_failed_items
+from Models.Operator.Operator import operator_login, add_fpa_data, add_reading, get_task, notify_to_incharge_func, check_fpa_status, update_work_status, add_checksheet_data, get_reasons_for_items, add_failed_items, get_update_on_csp
 
 
 Operator1=Blueprint('Operator', __name__)
@@ -111,10 +111,14 @@ def add_reading_handler():
 
 
 @Operator1.route("/operator/notify", methods=["POST"])
-# @token_required
+@TokenRequirements.token_required
 def notify_to_incharge_func_handler(**kwargs):
     return notify_to_incharge_func(request.form)
 
+@Operator1.route("/operator/get_csp_status", methods=["POST"])
+@TokenRequirements.token_required
+def get_update_on_csp_handler(**kwargs):
+    return get_update_on_csp(request.form)
 
 
 @Operator1.route("/operator/add_fpa_data", methods=["POST"])

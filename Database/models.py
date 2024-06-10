@@ -203,9 +203,9 @@ class  processes_info(db.Model):
     images_urls = db.Column(db.String(length=1200))
     required_skill_level = db.Column(db.Integer, default=0)
     added_by_owner = db.Column(db.String(30), nullable=False)
-    station_id = db.Column(db.String(length=25))
-    shift = db.Column(db.String(length=2))
-    avg_minutes_to_complete = db.Column(db.String(length=3))
+    #station_id = db.Column(db.String(length=25))
+    #shift = db.Column(db.String(length=2))
+    Cycle_Time_secs = db.Column(db.Integer)
     time = db.Column(db.Time, default=datetime.now(pytz.timezone('Asia/Kolkata')).time())
     date = db.Column(db.Date, default=datetime.now(pytz.timezone('Asia/Kolkata')).date())
 
@@ -358,6 +358,11 @@ class params_ucl_lcl(db.Model):
     parameter_no = db.Column(db.String(length=60), primary_key=True)
     USL = db.Column(db.Float)
     LSL = db.Column(db.Float)
+    time = db.Column(db.Time, default=datetime.now(pytz.timezone('Asia/Kolkata')).time())
+    date = db.Column(db.Date, default=datetime.now(pytz.timezone('Asia/Kolkata')).date())
+
+class floor_contant_values(db.Model):
+    floor_no = db.Column(db.String(length=20), primary_key=True)
     A2 = db.Column(db.Float)
     D2 = db.Column(db.Float)
     D3 = db.Column(db.Float)
@@ -373,6 +378,7 @@ class  notify_to_incharge(db.Model):
     station_id = db.Column(db.String(length=25), index=True, nullable=False)
     csp_id = db.Column(db.Integer, index=True, nullable=False)
     floor_no = db.Column(db.String(length=15), nullable=False)
+    approved_status = db.Column(db.Boolean, default=False)
     created_date = db.Column(db.Date)
     created_time = db.Column(db.Time)
     
@@ -381,6 +387,7 @@ class  notify_to_incharge(db.Model):
 class reasons(db.Model):
     reason_id  = db.Column(db.Integer,primary_key= True, autoincrement=True)
     reason = db.Column(db.String(length=200),nullable= False)
+    process_no = db.Column(db.String(length=40), nullable=False, index=True)
     floor_no = db.Column(db.String(length=15), nullable=False)
     floor_incharge_id = db.Column(db.String(30), nullable=False)
     date = db.Column(db.Date)
