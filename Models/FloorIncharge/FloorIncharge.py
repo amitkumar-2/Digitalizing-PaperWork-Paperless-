@@ -2,7 +2,7 @@ from flask import request, jsonify, session, current_app, send_from_directory, u
 import pytz
 from urllib.parse import urlparse
 from Database.init_and_conf import db
-from Database.models import floor_incharge_creds, Operator_creds, parts_info, processes_info, parameters_info, check_sheet_data, stations, work_assigned_to_operator, work_assigned_to_operator_logs, check_sheet, notify_to_incharge, check_sheet_data_logs, fpa_and_set_up_approved_records, fpa_and_set_up_approved_records_logs, reading_params, reading_params_logs, reasons, params_ucl_lcl, floor_contant_values
+from Database.models import floor_incharge_creds, Operator_creds, parts_info, processes_info, parameters_info, check_sheet_data, stations, work_assigned_to_operator, work_assigned_to_operator_logs, check_sheet, notify_to_incharge, check_sheet_data_logs, fpa_and_set_up_approved_records, fpa_and_set_up_approved_records_logs, reading_params, reading_params_logs, reasons, params_ucl_lcl, floor_contant_values, fpa_failed, failed_items, changed_operators_logs
 # from handlers import create_tocken
 from Config.token_handler import TokenRequirements
 from datetime import datetime, timedelta
@@ -290,9 +290,6 @@ def add_process(data, files):
         process_no = data.get('process_id')
         if len(process_no) <= 0:
             return  jsonify({"error":"Part name cannot be empty"}),406
-        process_precedency = data.get("process_precedency")
-        if int(process_precedency) < 0:
-            return  jsonify({"error":"process_precedency cannot be negative"}),406
         belongs_to_part = data.get('belongs_to_part')
         if len(belongs_to_part) <= 0:
             return  jsonify({"error":"Part name cannot be empty"}),406
@@ -300,6 +297,7 @@ def add_process(data, files):
         if len(added_by_owner) <= 0:
             return  jsonify({"error":"Part name cannot be empty"}),406
         files = files.getlist('file')
+        # document_id = data.get('document_id')
         
         # s3_client = return_s3_client()
         if not path.exists(UPLOAD_FOLDER):
@@ -308,9 +306,6 @@ def add_process(data, files):
 
         exist_part_no = parts_info.query.filter_by(part_no=belongs_to_part).first()
         if exist_part_no:
-            exist_process_precidency = processes_info.query.filter_by(belongs_to_part=belongs_to_part, process_precedency=process_precedency).first()
-            if exist_process_precidency:
-                return jsonify({"Message": "This Process precedency for this part is already exists."}), 409
             exist_process_no = processes_info.query.filter_by(process_no=process_no).first()
             if exist_process_no:
                 return jsonify({"Message": "This Process number already exists."}), 409
@@ -318,10 +313,14 @@ def add_process(data, files):
             else:
                 files_urls = []
                 if files:
+                    
                     for file in files:
+                        # document_id += 1
                         filename = secure_filename(file.filename)
                         file.save(path.join(UPLOAD_FOLDER, filename))
                         file_url = url_for('FloorIncharge.uploaded_file_handler', filename=filename, _external=True)
+                        # file_url_with_id = f"{file_url}:::{document_id}"
+                        # files_urls.append(file_url_with_id)
                         files_urls.append(file_url)
                         urls_str = ', '.join(files_urls)
                     
@@ -340,7 +339,7 @@ def add_process(data, files):
                 else:
                     files_urls = None
                 
-                new_process = processes_info(process_name=process_name, process_no=process_no, belongs_to_part=belongs_to_part, images_urls=urls_str, added_by_owner=added_by_owner, process_precedency=process_precedency)
+                new_process = processes_info(process_name=process_name, process_no=process_no, belongs_to_part=belongs_to_part, images_urls=urls_str, added_by_owner=added_by_owner)
                 # new_process = processes_info(process_name=process_name, process_no=process_no, belongs_to_part=belongs_to_part, added_by_owner=added_by_owner)
                 db.session.add(new_process)
                 db.session.commit()
@@ -373,7 +372,7 @@ def get_processes(data):
             if processes:
                 print(processes[0].process_name)
                 process_data = [
-                    {'process_name': process.process_name, 'process_no': process.process_no, 'process_precedency': process.process_precedency, 'skill_level': process.required_skill_level, 'Cycle_Time_secs': process.Cycle_Time_secs}
+                    {'process_name': process.process_name, 'process_no': process.process_no, 'skill_level': process.required_skill_level, 'Cycle_Time_secs': process.Cycle_Time_secs}
                     for process in processes
                 ]
                 # print(process_data)
@@ -399,12 +398,6 @@ def update_processes(data):
 
         exist_part_no = parts_info.query.filter_by(part_no=belongs_to_part).first()
         if exist_part_no:
-            part_related_processes = processes_info.query.filter_by(belongs_to_part=belongs_to_part).all()
-            if part_related_processes:
-                for process in part_related_processes:
-                    if process.process_no != process_no and process.process_precedency == process_precedency:
-                        return jsonify({"Message":"A process already assign this precidency."}), 409
-            
             exist_process_no = processes_info.query.filter_by(process_no=process_no).first()
             if exist_process_no:
                 # return jsonify({"Message": "This Process number already exists."})
@@ -426,7 +419,6 @@ def update_processes(data):
                     files_urls = None
                 
                 exist_process_no.process_name = process_name
-                exist_process_no.process_precedency = process_precedency
                 exist_process_no.belongs_to_part = belongs_to_part
                 exist_process_no.added_by_owner = added_by_owner
                 exist_process_no.images_urls = urls_str
@@ -485,7 +477,6 @@ def delete_processes(data):
 
 def add_parameter(data):
     try:
-        print("###################################")
         parameter_name = data.get('parameter_name')
         parameter_no = data.get('parameter_no')
         process_no = data.get('process_no')
@@ -1211,6 +1202,7 @@ def operator_of_station_shift(data):
     try:
         datas = {}
         stations_without_operator = []
+        employees_data = {}
         for station in data:
             station_id = station.get("station_id")
             employees = Operator_creds.query.filter_by(station_id=station_id).all()
@@ -1223,6 +1215,7 @@ def operator_of_station_shift(data):
                                 datas[station_id] = {}
                             if "A" not in datas[station_id]:
                                 datas[station_id]["A"] = []
+                            employees_data[employee.employee_id] = {"first_name": employee.fName, "last_name": employee.lName, "skill_level": employee.skill_level}
                             datas[station_id]["A"].append(employee.employee_id)
                     elif shift == "B":
                         if employee.shift_B:
@@ -1230,6 +1223,7 @@ def operator_of_station_shift(data):
                                 datas[station_id] = {}
                             if "B" not in datas[station_id]:
                                 datas[station_id]["B"] = []
+                            employees_data[employee.employee_id] = {"first_name": employee.fName, "last_name": employee.lName, "skill_level": employee.skill_level}
                             datas[station_id]["B"].append(employee.employee_id)
                     else:
                         if employee.shift_C:
@@ -1237,14 +1231,81 @@ def operator_of_station_shift(data):
                                 datas[station_id] = {}
                             if "C" not in datas[station_id]:
                                 datas[station_id]["C"] = []
+                            employees_data[employee.employee_id] = {"first_name": employee.fName, "last_name": employee.lName, "skill_level": employee.skill_level}
                             datas[station_id]["C"].append(employee.employee_id)
                     
             else:
                 stations_without_operator.append(station_id)
                 # return jsonify({"Message":f"No employees assigned to this station."}), 406
-        return jsonify({"Data":f"{datas}", "stations_without_operator": f'{stations_without_operator}'}), 200
+        return jsonify({"Data":f"{datas}", "stations_without_operator": f'{stations_without_operator}', "Employees_data": f'{employees_data}'}), 200
     except Exception as e:
         return jsonify({"Error in getting datas":f"Some error occurred while getting datas from the database: {e}"}), 422
+
+def change_operator_on_station(data):
+    try:
+        current_date = datetime.now().date()
+        station_id=data.get('station_id')
+        
+        # employee which we want to replace with the alreday assign operator
+        employee_id = data.get('employee_id')
+        
+        # employee_data = work_assigned_to_operator.query.filter_by(employee_id=employee_id).first()
+        # if employee_data:
+        #     return jsonify({"Message":"Employee is already assigend in the station"})
+        
+        
+        assign_task=work_assigned_to_operator.query.filter_by(station_id=station_id).first()
+        if assign_task is not None:
+            if assign_task.employee_id == employee_id:
+                return jsonify({"Message":"Employee is already assigend on the station"})
+            
+            check_changing_operator = changed_operators_logs.query.filter_by(assigned_date=assign_task.date, shift=assign_task.shift, employee_id=employee_id, station_id=station_id).first()
+            
+            check_changed_operator = changed_operators_logs.query.filter_by(assigned_date=assign_task.date, shift=assign_task.shift, employee_id=assign_task.employee_id, station_id=station_id).first()
+
+            if check_changed_operator:
+                check_changed_operator.passed = assign_task.operator_passed
+                check_changed_operator.filled = assign_task.operator_filled
+                check_changed_operator.failed = assign_task.operator_failed
+            else:
+                new_changed_operator = changed_operators_logs(employee_id=assign_task.employee_id, station_id=assign_task.station_id, part_no=assign_task.part_no, process_no=assign_task.process_no, start_shift_time=assign_task.start_shift_time, end_shift_time=assign_task.end_shift_time, shift=assign_task.shift, assigned_by_owner=assign_task.assigned_by_owner, total_assigned_task=assign_task.total_assigned_task, passed=assign_task.operator_passed, filled=assign_task.operator_filled, failed=assign_task.operator_failed, station_precedency=assign_task.station_precedency, assigned_date=assign_task.date, time=assign_task.time, logs_date=current_date)
+                db.session.add(new_changed_operator)
+            
+            
+            if check_changing_operator is not None:
+                assign_task.employee_id = employee_id
+                assign_task.operator_passed = check_changing_operator.passed
+                assign_task.operator_filled = check_changing_operator.filled
+                assign_task.operator_failed = check_changing_operator.failed
+            else:
+                assign_task.employee_id = employee_id
+                assign_task.operator_passed = 0
+                assign_task.operator_filled = 0
+                assign_task.operator_failed = 0
+                assign_task.operator_changed_status = True
+                
+                
+            
+                # db.session.add(new_changed_operator)
+                
+                # db.session.commit()
+                # return jsonify({"message": "Task assignment operator updated successfully."}),200
+            
+            
+            
+            
+            
+            
+            
+            
+            db.session.commit()
+            return jsonify({"message": "Task assignment operator updated successfully."}),200
+        else:
+            return jsonify({"message": "No task found for the given station and shift."}),401
+    
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
 
 ################################ failed items reason functions ##############################
 def add_reason(data):
@@ -1299,6 +1360,44 @@ def delete_reason_for_items(data):
     except Exception as e:
         db.session.rollback()
         return jsonify({'Error': f'Failed to delete reason: {e}'}), 500
+
+################################# current date data for the failed fpa ###############################
+def get_fpa_failed_history(data):
+    try:
+        fpa_datas = []
+        current_date = data.get('date')
+        line_no=data.get('line_no')
+        shift_input = data.get('shift')
+        fpa_row_data = fpa_failed.query.filter_by(line_no=line_no, date=current_date).all()
+        if fpa_row_data:
+            for fpa_entity in fpa_row_data:
+                fpa_failed_part_entities = work_assigned_to_operator_logs.query.filter_by(station_id=fpa_entity.station_id, assigned_date=current_date, shift=shift_input).first()
+                if fpa_failed_part_entities:
+                    if fpa_entity.date:
+                        date = fpa_entity.date.strftime('%Y-%m-%d')
+                    else:
+                        date = None
+                    if fpa_entity.first_update_time:
+                        first_update_time = fpa_entity.first_update_time.strftime('%H:%M:%S')
+                    else:
+                        first_update_time = None
+                    if fpa_entity.last_update_time:
+                        last_update_time = fpa_entity.last_update_time.strftime('%H:%M:%S')
+                    else:
+                        last_update_time = None
+                    fpa_datas.append([fpa_failed_part_entities.part_no,fpa_entity.item_id, fpa_entity.station_id,fpa_entity.fpa_failed_count, fpa_entity.fpa_shift, fpa_entity.shift, first_update_time, last_update_time, date])
+                else:
+                    return jsonify({"Message": "No work assigned to operator for the given shift."}), 404
+            return jsonify({"FPA_Data": f"{fpa_datas}"}), 200
+        else:
+            return jsonify({"Message": f"No fpa found with line_no {line_no} on date {current_date}."}), 404
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'Error': f'Failed to fetch the fpa data: {e}'}), 500
+
+
+def get_fpa_history(data):
+    pass
 
 #####################################################################################################################################
 ############################################### get previous data and api for history ###############################################
@@ -1398,26 +1497,40 @@ def get_readings_values_of_param(data):
         return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
 
 
-def station_history(data):
+def line_history(data):
     try:
-        station_id = data.get("station_id")
-        date = datetime.now().date()
+        datas = {}
+        row_start_date = data.get('start_date')
+        row_end_date = data.get('end_date')
+        start_date = datetime.strptime(row_start_date, '%Y-%m-%d').date()
+        end_date = datetime.strptime(row_end_date, '%Y-%m-%d').date()
         
-        station_previous_data = work_assigned_to_operator_logs.query.filter_by(station_id=station_id, date=date)
-
-        if station_previous_data:
-            employee_id = station_previous_data.employee_id
-            part_no = station_previous_data.part_no
-            process_no = station_previous_data.process_no
-            start_shift_time = station_previous_data.start_shift_time
-            end_shift_time = station_previous_data.end_shift_time
-            shift = station_previous_data.shift
-            assigned_by_owner = station_previous_data.assigned_by_owner
-            total_assigned_task = station_previous_data.total_assigned_task
-            check_fpa_status_at = station_previous_data.check_fpa_status_at
-            passed = station_previous_data.passed
-            filled = station_previous_data.filled
-            failed = station_previous_data.failed
+        line_no = data.get("line_no")
+        shift = data.get("shift")
+        
+        # Calculate the difference between dates
+        date_difference = (end_date - start_date).days
+        if date_difference > 46:
+            return  jsonify({"Message":"Your given date difference is more than 45 days"}), 403
+        
+        total_stations = stations.query.filter_by(line_no=line_no).all()
+        if total_stations:
+            for station in total_stations:
+                results = work_assigned_to_operator_logs.query.filter(
+                    work_assigned_to_operator_logs.assigned_date.between(start_date, end_date),
+                    work_assigned_to_operator_logs.station_id == station.station_id,
+                    work_assigned_to_operator_logs.shift == shift
+                    ).all()
+                
+                for entity in results:
+                    assigned_date = entity.assigned_date.strftime('%Y-%m-%d')
+                    start_shift_time = entity.start_shift_time.strftime('%H:%M:%S')
+                    end_shift_time = entity.end_shift_time.strftime('%H:%M:%S')
+                    if assigned_date not in datas:
+                        datas[assigned_date] = {}
+                    datas[assigned_date][station.station_id] = {"employee_id": entity.employee_id, "part_no": entity.part_no,"process_no": entity.process_no,"start_shift_time": start_shift_time,"end_shift_time": end_shift_time,"assigned_by_owner": entity.assigned_by_owner,"total_assigned_task": entity.total_assigned_task,"passed": entity.passed,"failed": entity.failed,"operator_changed_status": entity.operator_changed_status}
+                    print("##########", entity.employee_id)
+            return jsonify({"Datas": f"{datas}"}), 200
 
         
 
@@ -1426,6 +1539,81 @@ def station_history(data):
         #         return jsonify({"Message": "Employees data does not exist."}), 404
         # else:
         #     return jsonify({"Message": "Stations data does not exist."}), 404
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
+
+
+def part_history(data):
+    try:
+        part_no = data.get('part_no')
+        date = data.get('date')
+        part_history_data = work_assigned_to_operator_logs.query.filter_by(part_no=part_no, assigned_date=date).all()
+        if part_history_data:
+            return jsonify({"FPA_Data": f"{part_history_data}"}), 200
+        else:
+            return jsonify({"Message": f"No data found at this data: {date}."}), 404
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'Error': f'Failed to fetch the fpa data: {e}'}), 500
+
+
+def get_failed_items_data(data):
+    try:
+        part_no=data.get('part_no')
+        date = data.get('date')
+        reasons_data = []
+        if part_no and date:
+            exist_failed_items= failed_items.query.filter_by(part_no=part_no, date=date).all()
+            if exist_failed_items:
+                for reason in exist_failed_items:
+                    failed_items_reasons=reasons.query.filter_by(reason_id=reason.reason_id).first()
+                    reasons_data.append(
+                            {'part_no': reason.part_no, 'item_id': reason.item_id, 'reason_id': failed_items_reasons.reason_id, 'reason': failed_items_reasons.reason,'station_id':reason.station_id}
+                    )
+                return jsonify({"reasons": reasons_data}), 200
+            else:
+                return jsonify({"Message": f"No failed item data found for the {part_no} on {date}"}), 404
+        else:
+            return jsonify({"Message": "Please provide part_no and date."}), 404
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
+
+
+
+def generate_history_for_operator(data):
+    try:
+        row_start_date = data.get('start_date')
+        row_end_date = data.get('end_date')
+        start_date = datetime.strptime(row_start_date, '%Y-%m-%d').date()
+        end_date = datetime.strptime(row_end_date, '%Y-%m-%d').date()
+        operator_id=data.get('operator_id')
+        
+        operator_history = {}
+        
+        
+        # Calculate the difference between dates
+        date_difference = (end_date - start_date).days
+        if date_difference > 46:
+            return  jsonify({"Message":"Your given date difference is more than 45 days"}), 403
+        
+        results = work_assigned_to_operator_logs.query.filter(
+            work_assigned_to_operator_logs.assigned_date.between(start_date, end_date),
+            work_assigned_to_operator_logs.employee_id == operator_id
+            ).paginate(per_page=200)
+        
+        for entity in (results.items):
+            assigned_date = entity.assigned_date.strftime('%Y-%m-%d')
+            if assigned_date not in  operator_history:
+                operator_history[assigned_date] = {}
+            if entity.shift not in operator_history[assigned_date]:
+                operator_history[assigned_date][entity.shift] = {}
+            
+            operator_history[assigned_date][entity.shift] = {'employee_id': entity.employee_id, 'station_id': entity.station_id, 'part_no': entity.part_no, 'process_no': entity.process_no, 'start_shift_time': entity.start_shift_time, 'end_shift_time': entity.end_shift_time, 'assigned_by_owner': entity.assigned_by_owner, 'total_assigned_task': entity.total_assigned_task, 'passed': entity.passed, 'failed': entity.failed, '' 'process_no': entity.process_no}
+        
+        return jsonify({'Messages': f'{operator_history}'}), 200
+        
     except Exception as e:
         db.session.rollback()
         return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422

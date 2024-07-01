@@ -1,6 +1,6 @@
 from flask import request, session, jsonify, current_app
 from collections import Counter
-from Database.models import Operator_creds, fpa_and_set_up_approved_records, reading_params, stations, work_assigned_to_operator, processes_info, parameters_info, check_sheet, notify_to_incharge, check_sheet_data, reasons, failed_items
+from Database.models import Operator_creds, fpa_and_set_up_approved_records, reading_params, stations, work_assigned_to_operator, processes_info, parameters_info, check_sheet, notify_to_incharge, check_sheet_data, reasons, failed_items, fpa_failed
 from Database.init_and_conf import db
 from datetime import datetime
 from Config.token_handler import TokenRequirements
@@ -49,8 +49,11 @@ def get_task(data):
                         'total_assigned_task':get_task_data.total_assigned_task,
                         # 'left_for_rework':get_task_data.left_for_rework,
                         'passed':get_task_data.passed,
+                        'operator_passed':get_task_data.operator_passed,
                         'filled':get_task_data.filled,
+                        'operator_filled':get_task_data.operator_filled,
                         'failed':get_task_data.failed,
+                        'operator_failed':get_task_data.operator_failed,
                         'temp_task_id': get_task_data.task_id,
                         'station_precidency': get_task_data.station_precedency
                         # Add other relevant fields here
@@ -233,9 +236,9 @@ def check_fpa_status(data):
         if get_part_stations:
             for station in get_part_stations:
                 if precedency_no == 0:
-                    for station in get_part_stations:
-                        if precedency_no < station.station_precedency:
-                            precedency_no = station.station_precedency
+                    for station_data in get_part_stations:
+                        if precedency_no < station_data.station_precedency:
+                            precedency_no = station_data.station_precedency
                 if station.station_precedency == precedency_no:
                     before_station_fpa_status = fpa_and_set_up_approved_records.query.filter_by(station_id=station.station_id).first()
                     if before_station_fpa_status:
@@ -351,6 +354,10 @@ def update_work_status(data):
             get_station_data.filled = data.get('filled') or get_station_data.filled
             get_station_data.failed = data.get('failed') or get_station_data.failed
             
+            get_station_data.operator_passed = data.get('operator_passed') or get_station_data.operator_passed
+            get_station_data.operator_filled = data.get('operator_filled') or get_station_data.operator_filled
+            get_station_data.operator_failed = data.get('operator_failed') or get_station_data.operator_failed
+            
             db.session.commit()
             return jsonify({"Message":"Part has been updated Successfully"}),200
         else:
@@ -459,3 +466,41 @@ def get_reasons_for_items(data):
         db.session.rollback()
         return jsonify({'Error': f'Failed to fetch data: {e}'}), 500
 
+def add_fpa_failed(data):
+    try:
+        current_time = datetime.now().time()
+        current_date = datetime.now().date()
+        item_id=data.get('item_id')
+        if item_id == False:
+            return jsonify({"Message": "Please provide item_id."}), 404
+        station_id = data.get('station_id')
+        if station_id == False:
+            return jsonify({"Message": "Please provide station_id."}), 404
+        line_no = data.get('line_no')
+        if line_no == False:
+            return jsonify({"Message": "Please provide line_no."}), 404
+        fpa_failed_count = data.get('fpa_failed_count')
+        if fpa_failed_count == False:
+            return jsonify({"Message": "Please provide fpa_failed_count."}), 404
+        fpa_shift = data.get('fpa_shift')
+        if fpa_shift == False:
+            return jsonify({"Message": "Please provide fpa_shift."}), 404
+        shift = data.get('shift')
+        if shift == False:
+            return jsonify({"Message": "Please provide shift."}), 404
+        
+        exist_item=fpa_failed.query.filter_by(item_id=item_id).first()
+        if exist_item:
+            exist_item.fpa_failed_count = fpa_failed_count
+            exist_item.last_update_time = current_time
+            db.session.commit()
+            return jsonify({"Message": "fpa failed count updated"}), 201
+        else:
+            new_fpa_failed = fpa_failed(item_id=item_id,station_id=station_id, line_no=line_no,fpa_failed_count=fpa_failed_count, fpa_shift=fpa_shift, shift=shift, first_update_time=current_time, date=current_date)
+            db.session.add(new_fpa_failed)
+            db.session.commit()
+            return jsonify({"Message": "Failed fpa has been added successfully"}), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'Error': f'Failed to fetch data: {e}'}), 500

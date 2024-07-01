@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from functools import wraps
 from Database.models import Operator_creds, floor_incharge_creds, work_assigned_to_operator, fpa_and_set_up_approved_records, reading_params
 from Database.init_and_conf import db
-from Models.Operator.Operator import operator_login, add_fpa_data, add_reading, get_task, notify_to_incharge_func, check_fpa_status, update_work_status, add_checksheet_data, get_reasons_for_items, add_failed_items, get_update_on_csp
+from Models.Operator.Operator import operator_login, add_fpa_data, add_reading, get_task, notify_to_incharge_func, check_fpa_status, update_work_status, add_checksheet_data, get_reasons_for_items, add_failed_items, get_update_on_csp, add_fpa_failed
 
 
 Operator1=Blueprint('Operator', __name__)
@@ -149,3 +149,10 @@ def get_reasons_for_items_handler(**kwargs):
 @TokenRequirements.token_required
 def add_failed_items_handler(**kwargs):
     return add_failed_items(request.form)
+
+
+################################### add failed items with reason ##########################################
+@Operator1.route("/operator/add_fpa_failed", methods=['POST'])
+@TokenRequirements.token_required
+def add_fpa_failed_handler(**kwargs):
+    return add_fpa_failed(request.form)

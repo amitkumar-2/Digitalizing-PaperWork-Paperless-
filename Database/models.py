@@ -153,10 +153,15 @@ class work_assigned_to_operator(db.Model):
     total_assigned_task = db.Column(db.Integer, nullable=False)
     check_fpa_status_at = db.Column(db.Integer)
     passed = db.Column(db.Integer)
+    operator_passed = db.Column(db.Integer)
     filled = db.Column(db.Integer)
+    operator_filled = db.Column(db.Integer)
     failed = db.Column(db.Integer)
+    operator_failed = db.Column(db.Integer)
     task_id = db.Column(db.String(length=30), index=True)
     station_precedency = db.Column(db.Integer, nullable=False)
+    # previous_employee = db.Column(db.String(30))
+    operator_changed_status = db.Column(db.Boolean, default=False)
     time = db.Column(db.Time, default=datetime.now(pytz.timezone('Asia/Kolkata')).time())
     date = db.Column(db.Date, default=datetime.now(pytz.timezone('Asia/Kolkata')).date())
 
@@ -164,7 +169,30 @@ class work_assigned_to_operator_logs(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     employee_id = db.Column(db.String(length=20), nullable=False, index=True)
     station_id = db.Column(db.String(length=15), nullable=False, index=True)
-    part_no = db.Column(db.String(length=20), nullable=False)
+    part_no = db.Column(db.String(length=20), nullable=False, index=True)
+    process_no = db.Column(db.String(length=20), nullable=False)
+    start_shift_time = db.Column(db.Time, nullable=False, index=True)
+    end_shift_time = db.Column(db.Time, nullable=False, index=True)
+    shift = db.Column(db.String(length=2), nullable=False)
+    assigned_by_owner = db.Column(db.String(30), nullable=False)
+    total_assigned_task = db.Column(db.Integer, nullable=False)
+    check_fpa_status_at = db.Column(db.Integer)
+    passed = db.Column(db.Integer)
+    filled = db.Column(db.Integer)
+    failed = db.Column(db.Integer)
+    station_precedency = db.Column(db.Integer, nullable=False)
+    # previous_employee = db.Column(db.String(30))
+    operator_changed_status = db.Column(db.Boolean, default=False)
+    assigned_date = db.Column(db.Date, nullable=False, index=True)
+    time = db.Column(db.Time, default=datetime.now(pytz.timezone('Asia/Kolkata')).time())
+    logs_date = db.Column(db.Date, default=datetime.now(pytz.timezone('Asia/Kolkata')).date())
+    
+    
+class changed_operators_logs(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    employee_id = db.Column(db.String(length=20), nullable=False, index=True)
+    station_id = db.Column(db.String(length=15), nullable=False, index=True)
+    part_no = db.Column(db.String(length=20), nullable=False, index=True)
     process_no = db.Column(db.String(length=20), nullable=False)
     start_shift_time = db.Column(db.Time, nullable=False, index=True)
     end_shift_time = db.Column(db.Time, nullable=False, index=True)
@@ -179,7 +207,6 @@ class work_assigned_to_operator_logs(db.Model):
     assigned_date = db.Column(db.Date, nullable=False, index=True)
     time = db.Column(db.Time, default=datetime.now(pytz.timezone('Asia/Kolkata')).time())
     logs_date = db.Column(db.Date, default=datetime.now(pytz.timezone('Asia/Kolkata')).date())
-    
 
 
 ##################################### all parts information table #########################################
@@ -198,7 +225,7 @@ class  processes_info(db.Model):
     # id = db.Column(db.Integer, autoincrement=True)
     process_name = db.Column(db.String(length=220), nullable=False)
     process_no = db.Column(db.String(length=40), primary_key=True)
-    process_precedency =  db.Column(db.Integer, nullable=False)
+    # process_precedency =  db.Column(db.Integer, nullable=False)
     belongs_to_part = db.Column(db.String(length=20), nullable=False, index=True)
     images_urls = db.Column(db.String(length=1200))
     required_skill_level = db.Column(db.Integer, default=0)
@@ -404,3 +431,15 @@ class failed_items(db.Model):
     remarks = db.Column(db.String(length=200))
     time = db.Column(db.Time)
     date = db.Column(db.Date)
+
+
+class fpa_failed(db.Model):
+    item_id = db.Column(db.String(length=20), primary_key=True)
+    station_id = db.Column(db.String(length=20), nullable=False, index=True)
+    line_no = db.Column(db.String(length=20), nullable=False, index=True)
+    fpa_failed_count = db.Column(db.Integer)
+    fpa_shift = db.Column(db.String(length=50))
+    shift = db.Column(db.String(length=5))
+    first_update_time = db.Column(db.Time)
+    last_update_time = db.Column(db.Time)
+    date = db.Column(db.Date, index=True)
