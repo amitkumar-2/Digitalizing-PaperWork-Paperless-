@@ -879,6 +879,7 @@ def free_stations_if_task_completed(data):
         stations_not_any_task = []
         
         for station_id in stations_ids:
+            line_no = stations.query.filter_by (station_id=station_id).first().line_no
             get_station_data = work_assigned_to_operator.query.filter_by(station_id=station_id).first()
             get_station_check_sheet_data = check_sheet_data.query.filter_by(station_id=station_id).first()
             get_fpa_data = fpa_and_set_up_approved_records.query.filter_by(station_id=station_id).first()
@@ -924,9 +925,9 @@ def free_stations_if_task_completed(data):
                                                                     log_date=current_date,
                                                                     log_time=current_time)
                     try:
-                        new_fpa_data_logs = fpa_and_set_up_approved_records_logs(station_id=get_fpa_data.station_id, start_shift_1_parameters_values=get_fpa_data.start_shift_1_parameters_values, start_shift_1_time=get_fpa_data.start_shift_1_time, start_shift_2_parameters_values=get_fpa_data.start_shift_2_parameters_values, start_shift_2_time=get_fpa_data.start_shift_2_time, end_shift_1_parameters_values=get_fpa_data.end_shift_1_parameters_values, end_shift_1_time=get_fpa_data.end_shift_1_time, end_shift_2_parameters_values=get_fpa_data.end_shift_2_parameters_values, end_shift_2_time=get_fpa_data.end_shift_2_time, date=get_fpa_data.date, logs_date=current_date)
+                        new_fpa_data_logs = fpa_and_set_up_approved_records_logs(station_id=get_fpa_data.station_id, line_no = get_fpa_data.line_no, shift = get_fpa_data.shift, start_shift_1_parameters_values=get_fpa_data.start_shift_1_parameters_values, start_shift_1_time=get_fpa_data.start_shift_1_time, start_shift_2_parameters_values=get_fpa_data.start_shift_2_parameters_values, start_shift_2_time=get_fpa_data.start_shift_2_time, end_shift_1_parameters_values=get_fpa_data.end_shift_1_parameters_values, end_shift_1_time=get_fpa_data.end_shift_1_time, end_shift_2_parameters_values=get_fpa_data.end_shift_2_parameters_values, end_shift_2_time=get_fpa_data.end_shift_2_time, date=get_fpa_data.date, logs_date=current_date)
                     except:
-                        new_fpa_data_logs = fpa_and_set_up_approved_records_logs(station_id=station_id, logs_date=current_date)
+                        new_fpa_data_logs = fpa_and_set_up_approved_records_logs(station_id=station_id, line_no = line_no, shift = get_station_data.shift, logs_date=current_date)
                     
                     try:
                         if station_readings_entities:
@@ -1395,9 +1396,30 @@ def get_fpa_failed_history(data):
         db.session.rollback()
         return jsonify({'Error': f'Failed to fetch the fpa data: {e}'}), 500
 
-
 def get_fpa_history(data):
-    pass
+    try:
+        fpa_datas = []
+        row_start_date = data.get('start_date')
+        row_end_date = data.get('end_date')
+        start_date = datetime.strptime(row_start_date, '%Y-%m-%d').date()
+        end_date = datetime.strptime(row_end_date, '%Y-%m-%d').date()
+        line_no=data.get('line_no')
+        shift_input = data.get('shift')
+        
+        # Calculate the difference between dates
+        date_difference = (end_date - start_date).days
+        if date_difference > 46:
+            return  jsonify({"Message":"Your given date difference is more than 45 days"}), 403
+        
+        results = fpa_and_set_up_approved_records_logs.query.filter(
+            fpa_and_set_up_approved_records_logs.assigned_date.between(start_date, end_date),
+            fpa_and_set_up_approved_records_logs.line_no == line_no
+            ).all()
+        
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'Error': f'Failed to fetch the fpa data: {e}'}), 500
 
 #####################################################################################################################################
 ############################################### get previous data and api for history ###############################################
@@ -1610,9 +1632,54 @@ def generate_history_for_operator(data):
             if entity.shift not in operator_history[assigned_date]:
                 operator_history[assigned_date][entity.shift] = {}
             
-            operator_history[assigned_date][entity.shift] = {'employee_id': entity.employee_id, 'station_id': entity.station_id, 'part_no': entity.part_no, 'process_no': entity.process_no, 'start_shift_time': entity.start_shift_time, 'end_shift_time': entity.end_shift_time, 'assigned_by_owner': entity.assigned_by_owner, 'total_assigned_task': entity.total_assigned_task, 'passed': entity.passed, 'failed': entity.failed, '' 'process_no': entity.process_no}
+            start_shift_time = entity.start_shift_time.strftime('%H:%M:%S')
+            end_shift_time = entity.end_shift_time.strftime('%H:%M:%S')
+            
+            operator_history[assigned_date][entity.shift] = {'employee_id': entity.employee_id, 'station_id': entity.station_id, 'part_no': entity.part_no, 'process_no': entity.process_no, 'start_shift_time': start_shift_time, 'end_shift_time': end_shift_time, 'assigned_by_owner': entity.assigned_by_owner, 'total_assigned_task': entity.total_assigned_task, 'passed': entity.passed, 'failed': entity.failed, '' 'process_no': entity.process_no}
         
         return jsonify({'Messages': f'{operator_history}'}), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
+
+
+def generate_history_for_station(data):
+    try:
+        row_start_date = data.get('start_date')
+        row_end_date = data.get('end_date')
+        start_date = datetime.strptime(row_start_date, '%Y-%m-%d').date()
+        end_date = datetime.strptime(row_end_date, '%Y-%m-%d').date()
+        station_id=data.get('station_id')
+        
+        station_history = {}
+        
+        
+        # Calculate the difference between dates
+        date_difference = (end_date - start_date).days
+        if date_difference > 46:
+            return  jsonify({"Message":"Your given date difference is more than 45 days"}), 403
+        
+        results = work_assigned_to_operator_logs.query.filter(
+            work_assigned_to_operator_logs.assigned_date.between(start_date, end_date),
+            work_assigned_to_operator_logs.station_id == station_id
+            ).paginate(per_page=200)
+        
+        for entity in (results.items):
+            assigned_date = entity.assigned_date.strftime('%Y-%m-%d')
+            if assigned_date not in  station_history:
+                station_history[assigned_date] = {}
+            if entity.shift not in station_history[assigned_date]:
+                station_history[assigned_date][entity.shift] = {}
+                
+            start_shift_time = entity.start_shift_time.strftime('%H:%M:%S')
+            end_shift_time = entity.end_shift_time.strftime('%H:%M:%S')
+            
+            station_history[assigned_date][entity.shift] = {'employee_id': entity.employee_id, 'station_id': entity.station_id, 'part_no': entity.part_no, 'process_no': entity.process_no, 'start_shift_time': start_shift_time, 'end_shift_time': end_shift_time, 'assigned_by_owner': entity.assigned_by_owner, 'total_assigned_task': entity.total_assigned_task, 'passed': entity.passed, 'failed': entity.failed, '' 'process_no': entity.process_no}
+        
+        return jsonify({'Messages': f'{station_history}'}), 200
+        
+        
         
     except Exception as e:
         db.session.rollback()

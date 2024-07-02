@@ -159,10 +159,14 @@ def add_fpa_data(data):
         date = datetime.now().date()
         
 
+        line_no = stations.query.filter_by (station_id=station_id).first().line_no
         existing_operator_today = fpa_and_set_up_approved_records.query.filter_by(
             station_id=station_id, date=date
         ).first()
         running_task_station_id = work_assigned_to_operator.query.filter_by(station_id=station_id).first()
+        
+        
+        main_shift = running_task_station_id.shift
 
         if existing_operator_today:
             # if len(existing_operator_today.end_shift_2_time) > 4:
@@ -197,6 +201,8 @@ def add_fpa_data(data):
         else:
             new_work = fpa_and_set_up_approved_records(
                 station_id=station_id,
+                line_no = line_no,
+                shift = main_shift,
                 start_shift_1_parameters_values=data.get('start_shift_1_parameters_values', ''),
                 start_shift_1_time=datetime.now().time() if data.get('start_shift_1_parameters_values') else None,
                 date=date

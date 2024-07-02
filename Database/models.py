@@ -256,6 +256,8 @@ class parameters_info(db.Model):
 class  fpa_and_set_up_approved_records(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     station_id = db.Column(db.String(length=20), nullable=False, index=True)
+    line_no = db.Column(db.String(length=20), nullable=False, index=True)
+    shift = db.Column(db.String(length=2), nullable=False, index=True)
     start_shift_1_parameters_values = db.Column(db.String(length=1500))
     start_shift_1_time = db.Column(db.Time)
     start_shift_2_parameters_values = db.Column(db.String(length=1500))
@@ -269,6 +271,8 @@ class  fpa_and_set_up_approved_records(db.Model):
 class  fpa_and_set_up_approved_records_logs(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     station_id = db.Column(db.String(length=20), nullable=False)
+    line_no = db.Column(db.String(length=20), nullable=False, index=True)
+    shift = db.Column(db.String(length=2), nullable=False, index=True)
     start_shift_1_parameters_values = db.Column(db.String(length=1500))
     start_shift_1_time = db.Column(db.Time)
     start_shift_2_parameters_values = db.Column(db.String(length=1500))

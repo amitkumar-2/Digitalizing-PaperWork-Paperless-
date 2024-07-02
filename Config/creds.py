@@ -1,3 +1,12 @@
+import os
+
+# Retrieve database connection details from environment variables
+db_host = os.getenv('DATABASE_HOST', 'localhost')
+db_user = os.getenv('DATABASE_USER', 'root')
+db_password = os.getenv('DATABASE_PASSWORD', '')
+db_name = os.getenv('DATABASE_NAME', 'mydatabase')
+
+
 class BaseConfig():
     API_PREFIX = '/api'
     TESTING = False
@@ -21,7 +30,8 @@ class DevConfig(BaseConfig):
     MQ_URL = 'amqp://pika:start1234@54.65.98.165:5672'
     # SQLALCHEMY_DATABASE_URI = 'postgresql://db_user:db_password@18.212.243.182/my-sql'
     # SQLALCHEMY_DATABASE_URI = 'mysql+pymysql://interface:interface@13.201.8.162/DuDB'
-    SQLALCHEMY_DATABASE_URI = 'mysql+pymysql://gaurav:gaurav@192.168.1.16/DU_DB'
+    # SQLALCHEMY_DATABASE_URI = 'mysql+pymysql://gauravsharma:gaurav@192.168.1.14/du_db'
+    SQLALCHEMY_DATABASE_URI = f'mysql+pymysql://{db_user}:{db_password}@{db_host}/{db_host}'
     POSTGRES_SECRET_KEY = 'KOKE92jdwdm(@#Jdkmkcm93)eeijdijioHOUIHDUENJNEOINDIWIONDKWOIDNIOENDIOJIODNNCUIBYRGYVBRVTRBNOXE'
     CELERY_BROKER = 'pyamqp://rabbit_user:rabbit_password@54.65.98.165:5672'
     CELERY_RESULT_BACKEND = 'rpc://rabbit_user:rabbit_password@54.65.98.165:5672'
