@@ -30,8 +30,8 @@ init_and_conf.db.init_app(app)
 init_and_conf.migrate.init_app(app, init_and_conf.db)
 
 
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
-# socketio = SocketIO(app, cors_allowed_origins="*")
+#socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
+socketio = SocketIO(app, cors_allowed_origins="*")
 scheduler = BackgroundScheduler()
 
 

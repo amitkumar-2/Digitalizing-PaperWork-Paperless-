@@ -1,14 +1,3 @@
-# from flask import Blueprint, render_template
-
-# home=Blueprint('home', __name__)
-
-# @home.route("/floor-incharge-home")
-# @home.route("/")
-# def floorInchargeHome():
-#     return "<h1>This is home page</h1>"
-
-
-
 from flask import Blueprint, render_template, request, session, jsonify, make_response
 import handlers
 from datetime import datetime, timedelta
@@ -17,7 +6,7 @@ from collections import Counter
 from Database.models import Operator_creds, floor_incharge_creds, work_assigned_to_operator, parts_info, processes_info, parameters_info, check_sheet_data, check_sheet_data_logs, work_assigned_to_operator_logs
 import pytz
 from Database.init_and_conf import db
-from Models.FloorIncharge.FloorIncharge import login, operator_signup, add_part, get_parts, update_part, add_process, get_processes, add_parameter, add_checksheet, stations_info, stations_current_status, refresh_data, free_stations_if_task_completed, disable_part, assign_task, update_processes, update_parameter, get_parameter, get_notification_info, get_floor_data, get_stations_previous_data, get_operator_details,add_stations, delete_notification, add_reason, get_reasons_for_items, delete_reason_for_items, get_readings_for_chart, operator_change_password,get_readings_values_of_param, delete_part, delete_processes, delete_parameter, delete_task, operator_update, operator_of_station_shift, approve_csp, uploaded_file, change_operator_on_station, get_fpa_failed_history, part_history, get_failed_items_data, generate_history_for_operator, line_history, generate_history_for_station
+from Models.FloorIncharge.FloorIncharge import login, operator_signup, add_part, get_parts, update_part, add_process, get_processes, add_parameter, add_checksheet, stations_info, stations_current_status, refresh_data, free_stations_if_task_completed, disable_part, assign_task, update_processes, update_parameter, get_parameter, get_notification_info, get_floor_data, get_stations_previous_data, get_operator_details,add_stations, delete_notification, add_reason, get_reasons_for_items, delete_reason_for_items, get_readings_for_chart, operator_change_password,get_readings_values_of_param, delete_part, delete_processes, delete_parameter, delete_task, operator_update, operator_of_station_shift, approve_csp, uploaded_file, change_operator_on_station, get_fpa_failed_history, part_history, get_failed_items_data, generate_history_for_operator, line_history, generate_history_for_station, generate_history_for_part
 from Config.token_handler import TokenRequirements
 
 FloorIncharge1=Blueprint('FloorIncharge', __name__)
@@ -455,3 +444,10 @@ def generate_history_for_station_handler(**kwargs):
 @TokenRequirements.token_required
 def line_history_handler(**kwargs):
     return line_history(request.form)
+
+
+#################################### get part history for a date range ##################################
+@FloorIncharge1.route('/floorincharge/generate_history_for_part',methods=['POST'])
+@TokenRequirements.token_required
+def generate_history_for_part_handler(**kwargs):
+    return generate_history_for_part(request.form)

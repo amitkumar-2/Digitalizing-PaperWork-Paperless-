@@ -9,6 +9,7 @@ Werkzeug
 flask_migrate
 pyjwt
 pytz
+gunicorn
 
 eventlet
 flask_cors

@@ -1684,3 +1684,45 @@ def generate_history_for_station(data):
     except Exception as e:
         db.session.rollback()
         return jsonify({'Error': f'Block is not able to execute successfully {e}'}), 422
+
+
+def generate_history_for_part(data):
+    try:
+        row_start_date = data.get('start_date')
+        row_end_date = data.get('end_date')
+        start_date = datetime.strptime(row_start_date, '%Y-%m-%d').date()
+        end_date = datetime.strptime(row_end_date, '%Y-%m-%d').date()
+        part_no=data.get('part_no')
+        
+        part_history = {}
+        
+        
+        # Calculate the difference between dates
+        date_difference = (end_date - start_date).days
+        if date_difference > 46:
+            return  jsonify({"Message":"Your given date difference is more than 45 days"}), 403
+        
+        results = work_assigned_to_operator_logs.query.filter(
+            work_assigned_to_operator_logs.assigned_date.between(start_date, end_date),
+            work_assigned_to_operator_logs.part_no == part_no
+            ).paginate(per_page=200)
+        if results.items:
+            for entity in (results.items):
+                assigned_date = entity.assigned_date.strftime('%Y-%m-%d')
+                if assigned_date not in  part_history:
+                    part_history[assigned_date] = {}
+                if entity.shift not in part_history[assigned_date]:
+                    part_history[assigned_date][entity.shift] = {}
+                    
+                entity.start_shift_time = entity.start_shift_time.strftime('%H:%M:%S')
+                entity.end_shift_time = entity.end_shift_time.strftime('%H:%M:%S')
+                
+                part_history[assigned_date][entity.shift] = {'employee_id': entity.employee_id, 'station_id': entity.station_id, 'part_no': entity.part_no, 'process_no': entity.process_no, 'start_shift_time': entity.start_shift_time, 'end_shift_time': entity.end_shift_time, 'assigned_by_owner': entity.assigned_by_owner, 'total_assigned_task': entity.total_assigned_task, 'passed': entity.passed, 'failed': entity.failed, '' 'process_no': entity.process_no}
+            
+            return jsonify({'Messages': f'{part_history}'}), 200
+        else:
+            return jsonify({'Message': f'No Data found at this part_no: {part_no} '})
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'Error': f'Failed to fetch the fpa data: {e}'}), 500
