@@ -288,7 +288,7 @@ def add_reading(data):
         date = datetime.now().date()
 
         existing_parameter = reading_params.query.filter_by(
-            parameter_no=parameter_no, date=date
+            station_id = station_id, date=date
         ).first()
 
         if existing_parameter:

@@ -888,7 +888,7 @@ def free_stations_if_task_completed(data):
                 if get_station_data.end_shift_time>=current_time and get_station_data.date==current_date:
                     process_data = processes_info.query.filter_by(process_no=get_station_data.process_no).first()
                     operator_name = Operator_creds.query.filter_by(employee_id=get_station_data.employee_id).first()
-                    task_running_on_stations.append([get_station_data.station_id, get_station_data.employee_id, operator_name.fName, operator_name.lName, operator_name.skill_level, get_station_data.process_no, process_data.required_skill_level])
+                    task_running_on_stations.append([get_station_data.station_id, get_station_data.employee_id, operator_name.fName, operator_name.lName, operator_name.skill_level, get_station_data.process_no, get_station_data.part_no, process_data.required_skill_level, get_station_data.task_id])
                 elif get_station_data.end_shift_time<current_time or get_station_data.date!=current_date:
                     new_record = work_assigned_to_operator_logs(employee_id = get_station_data.employee_id,
                             station_id = get_station_data.station_id,
@@ -1170,7 +1170,7 @@ def  get_stations_previous_data(data):
                 if running_task_on_station:
                     process_data = processes_info.query.filter_by(process_no=running_task_on_station.process_no).first()
                     operator_name = Operator_creds.query.filter_by(employee_id=running_task_on_station.employee_id).first()
-                    running_task_on_stations.append([running_task_on_station.station_id, running_task_on_station.employee_id, operator_name.fName, operator_name.lName, operator_name.skill_level, running_task_on_station.process_no, process_data.required_skill_level])
+                    running_task_on_stations.append([running_task_on_station.station_id, running_task_on_station.employee_id, operator_name.fName, operator_name.lName, operator_name.skill_level, running_task_on_station.process_no, running_task_on_station.part_no, process_data.required_skill_level])
                     continue
                 # latest_data = work_assigned_to_operator_logs.query.filter_by(station_id=station_id, date=date).order_by(db.desc(work_assigned_to_operator_logs.date)).first()
                 latest_datas = work_assigned_to_operator_logs.query.filter_by(station_id=station_id, assigned_date=assigned_date).all()
@@ -1712,12 +1712,14 @@ def generate_history_for_part(data):
                 if assigned_date not in  part_history:
                     part_history[assigned_date] = {}
                 if entity.shift not in part_history[assigned_date]:
-                    part_history[assigned_date][entity.shift] = {}
+                    part_history[assigned_date][entity.shift] = []
                     
                 entity.start_shift_time = entity.start_shift_time.strftime('%H:%M:%S')
                 entity.end_shift_time = entity.end_shift_time.strftime('%H:%M:%S')
-                
-                part_history[assigned_date][entity.shift] = {'employee_id': entity.employee_id, 'station_id': entity.station_id, 'part_no': entity.part_no, 'process_no': entity.process_no, 'start_shift_time': entity.start_shift_time, 'end_shift_time': entity.end_shift_time, 'assigned_by_owner': entity.assigned_by_owner, 'total_assigned_task': entity.total_assigned_task, 'passed': entity.passed, 'failed': entity.failed, '' 'process_no': entity.process_no}
+                if entity.shift not in part_history[assigned_date]:
+                    part_history[assigned_date][entity.shift] = {'employee_id': entity.employee_id, 'station_id': entity.station_id, 'part_no': entity.part_no, 'process_no': entity.process_no, 'start_shift_time': entity.start_shift_time, 'end_shift_time': entity.end_shift_time, 'assigned_by_owner': entity.assigned_by_owner, 'total_assigned_task': entity.total_assigned_task, 'passed': entity.passed, 'failed': entity.failed, 'process_no': entity.process_no}
+                else:
+                    part_history[assigned_date][entity.shift].append({'employee_id': entity.employee_id, 'station_id': entity.station_id, 'part_no': entity.part_no, 'process_no': entity.process_no, 'start_shift_time': entity.start_shift_time, 'end_shift_time': entity.end_shift_time, 'assigned_by_owner': entity.assigned_by_owner, 'total_assigned_task': entity.total_assigned_task, 'passed': entity.passed, 'failed': entity.failed, 'process_no': entity.process_no})
             
             return jsonify({'Messages': f'{part_history}'}), 200
         else:

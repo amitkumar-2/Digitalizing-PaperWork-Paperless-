@@ -350,7 +350,8 @@ class check_sheet_data_logs(db.Model):
 
 ############################################## table to get reading status for parameters ##################################
 class reading_params(db.Model):
-    parameter_no = db.Column(db.String(length=60), primary_key=True)
+    station_id = db.Column(db.String(length=21), primary_key=True)
+    parameter_no = db.Column(db.String(length=60), nullable=False)
     reading_1 = db.Column(db.String(length=10))
     reading_1_time = db.Column(db.Time)
     reading_2 = db.Column(db.String(length=10))
@@ -361,7 +362,6 @@ class reading_params(db.Model):
     reading_4_time = db.Column(db.Time)
     reading_5 = db.Column(db.String(length=10))
     reading_5_time = db.Column(db.Time)
-    station_id = db.Column(db.String(length=20), primary_key=True)
     date = db.Column(db.Date, default=datetime.now(pytz.timezone('Asia/Kolkata')).date())
 
 class reading_params_logs(db.Model):

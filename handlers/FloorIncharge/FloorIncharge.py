@@ -234,7 +234,7 @@ def delete_part_handler(**kwargs):
 def  add_process_handler(**kwargs):
     return add_process(request.form, request.files)
 
-@FloorIncharge1.route("/floorincharge/uploads/<filename>", methods=['POST'])
+@FloorIncharge1.route("/floorincharge/uploads/<filename>", methods=['POST', 'GET'])
 @TokenRequirements.token_required
 def uploaded_file_handler(filename, **kwargs):
     return uploaded_file(filename)
